@@ -25,6 +25,13 @@ export function save() {
   catch (e) { storageOk = false; console.warn('Could not save', e); }
 }
 
+export function replaceAll(data) {
+  const b = blank();
+  Object.keys(state).forEach(k => delete state[k]);
+  Object.assign(state, b, data, { v: 1 });
+  save();
+}
+
 export function resetAll() {
   const b = blank();
   Object.keys(state).forEach(k => delete state[k]);
@@ -95,16 +102,37 @@ export const PRESETS = {
   lc: { label: 'Low carb', p: 30, c: 25, f: 45 }
 };
 
+export function ageOf(dob) {
+  const b = parseKey(dob), t = new Date();
+  let a = t.getFullYear() - b.getFullYear();
+  if (t.getMonth() < b.getMonth() || (t.getMonth() === b.getMonth() && t.getDate() < b.getDate())) a--;
+  return a;
+}
+
+// A suggested goal from height, weight and sex. Healthy range = BMI 18.5–24.9;
+// above it we suggest a realistic first step (at most 10% of body weight).
+export function suggestGoal(hcm, kg, sex) {
+  const h = hcm / 100, lo = 18.5 * h * h, hi = 24.9 * h * h;
+  const typical = (sex === 'm' ? 50 : 45.5) + 2.3 * Math.max(0, hcm / 2.54 - 60); // Devine formula
+  let goal, why;
+  if (kg > hi + 0.3) { goal = Math.max(hi, kg * 0.9); why = goal > hi + 0.3 ? 'step' : 'top'; }
+  else if (kg < lo - 0.3) { goal = Math.min(lo, kg * 1.1); why = 'low'; }
+  else { goal = kg; why = 'ok'; }
+  return { goal: Math.round(goal * 2) / 2, lo, hi, typical, why };
+}
+
 export function calcPlan(p, kgNow) {
   const kg = kgNow != null ? kgNow : p.startKg;
-  const bmr = 10 * kg + 6.25 * p.hcm - 5 * p.age + (p.sex === 'm' ? 5 : -161);
+  const age = p.dob ? ageOf(p.dob) : (p.age || 30);
+  const bmr = 10 * kg + 6.25 * p.hcm - 5 * age + (p.sex === 'm' ? 5 : -161);
   const tdee = bmr * ACT[p.act][0];
   const floor = p.sex === 'm' ? 1500 : 1200;
   const calc = Math.round((tdee + p.pace * 1100) / 10) * 10;
   const kcal = p.own ? p.ownKcal : Math.max(calc, floor);
   const pr = p.preset === 'custom' && p.custom ? p.custom : PRESETS[p.preset] || PRESETS.bal;
+  if (p.own && p.ownMacros) return { tdee, floor, calc, floorHit: false, kcal, p: Math.round(p.mp || 0), c: Math.round(p.mc || 0), f: Math.round(p.mf || 0), fib: Math.round(p.mfib || 30), age };
   return {
-    tdee, floor, calc, floorHit: !p.own && calc < floor, kcal,
+    tdee, floor, calc, floorHit: !p.own && calc < floor, kcal, age,
     p: Math.round(kcal * pr.p / 100 / 4), c: Math.round(kcal * pr.c / 100 / 4), f: Math.round(kcal * pr.f / 100 / 9),
     fib: 30
   };

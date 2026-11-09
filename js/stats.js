@@ -106,7 +106,7 @@ function counts() {
     const t = S.totals(d.entries);
     const hit = plan && t.p >= plan.p;
     protRun = hit ? (prev && S.addDays(prev, 1) === k ? protRun + 1 : 1) : 0; protBest = Math.max(protBest, protRun); prev = hit ? k : null;
-    if (t.fib >= 30) fibDays++;
+    if (plan && t.fib >= plan.fib) fibDays++;
   });
   return { foods, litres: cups * ((p && p.cupMl) || 250) / 1000, days, protBest, fibDays };
 }

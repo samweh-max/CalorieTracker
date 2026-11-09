@@ -379,5 +379,5 @@ export function catOf(food) {
 export function foodTile(food, size = 40) {
   const [d, bg, fg] = CATS[catOf(food)];
   const s = Math.round(size * 0.52);
-  return `<span class="tile" style="width:${size}px;height:${size}px;background:${bg};color:${fg}" aria-hidden="true"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg></span>`;
+  return `<span class="tile" style="width:${size}px;height:${size}px;--tb:${bg};--tc:${fg}" aria-hidden="true"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg></span>`;
 }

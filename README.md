@@ -4,6 +4,7 @@ A friendly, phone-first calorie, macro, fibre and water tracker. Inspired by Los
 
 - Works in any modern phone browser and can be added to the home screen like an app.
 - Everything you log is saved **on your own phone** (in the browser). Nothing is uploaded.
+- Light and dark mode, plus **backup & restore** (Me › Your data) so a cleared browser never loses your log.
 - Food search: built-in everyday basics, Open Food Facts (UK or Canada products) and Health Canada's Canadian Nutrient File.
 
 ## Put it online with GitHub Pages
