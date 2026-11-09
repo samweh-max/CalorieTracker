@@ -3,6 +3,7 @@ import * as S from './store.js';
 import * as F from './foods.js';
 import { startScanner, validBarcode } from './scan.js';
 import * as T from './stats.js';
+import * as BU from './buddy.js';
 
 const $app = document.getElementById('app');
 const $ov = document.getElementById('overlay');
@@ -63,6 +64,7 @@ function confetti() {
 
 /* ---------------- UI state ---------------- */
 const ui = {
+  buddyEv: null, buddySeed: Math.floor(Math.random() * 6),
   view: S.state.profile ? 'today' : 'setup',
   date: S.todayKey(),
   meal: null, q: '', tab: 'all',
@@ -145,6 +147,37 @@ function amountText(e) {
   return plain ? `${fmtAmt(e.amt)} ${u.short}` : `${fmtAmt(e.amt)} × ${u.short}`;
 }
 
+
+/* ---------------- buddy (little man in the top bar) ---------------- */
+function buddyOn() { return S.state.settings.buddy !== false && !!S.state.profile; }
+function buddyMood(d, plan, isToday) {
+  return BU.moodFor(d, plan, { ev: ui.buddyEv, isToday, waterGoal: S.state.profile.waterGoal || 8 });
+}
+function buddyProps(mood, size) {
+  const p = S.state.profile, st = S.state.settings;
+  const still = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return { mood, sex: p.sex === 'f' ? 'f' : 'm', age: (p.dob ? S.ageOf(p.dob) : p.age) || 35, hcm: p.hcm || 175, kg: S.latestWeight(), size: size || 84, animate: !still, moustache: st.tache !== false, shirt: st.shirt || '#C8553D' };
+}
+function buddyHtml(d, plan, isToday) {
+  const mood = buddyMood(d, plan, isToday);
+  return `<button type="button" class="buddy press" id="buddy" data-a="buddy" data-mood="${mood}" aria-label="Your little man looks ${BU.MOOD_NAMES[mood]}. Tap him.">${BU.buddySvg(buddyProps(mood))}</button>`;
+}
+let buddyTimer = null;
+function buddyEvent(mood) {
+  ui.buddyEv = { mood, t: Date.now() }; ui.buddySeed++;
+  clearTimeout(buddyTimer);
+  buddyTimer = setTimeout(() => { ui.buddyEv = null; refreshBuddy(false); }, 9200);
+}
+function refreshBuddy(poke) {
+  const b = document.getElementById('buddy'); if (!b || ui.view !== 'today') return;
+  const d = S.peekDay(ui.date), plan = S.plan(), isToday = ui.date === S.todayKey();
+  const mood = buddyMood(d, plan, isToday);
+  if (mood !== b.dataset.mood) { b.innerHTML = BU.buddySvg(buddyProps(mood)); b.dataset.mood = mood; b.setAttribute('aria-label', 'Your little man looks ' + BU.MOOD_NAMES[mood] + '. Tap him.'); }
+  const bub = document.getElementById('bubble');
+  if (bub) { bub.textContent = BU.lineFor(mood, ui.buddySeed + parseInt(ui.date.slice(-2), 10)); bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop'); }
+  if (poke) { b.classList.remove('poke'); void b.offsetWidth; b.classList.add('poke'); }
+}
+
 const VIEWS = {};
 const afterRender = {};
 
@@ -158,6 +191,7 @@ VIEWS.today = () => {
   const greet = (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (p.name ? ', ' + esc(p.name) : '');
   const wk = weekKeys(k);
   const streak = S.streak();
+  const buddyLine = buddyOn() ? BU.lineFor(buddyMood(d, plan, isToday), ui.buddySeed + parseInt(k.slice(-2), 10)) : '';
   const bar = (nm, cur, tgt, col) => `<div class="bar"><span class="nm">${nm}</span><div class="tr"><div class="fl" data-w="${clamp(cur / tgt * 100, 0, 100).toFixed(1)}%" style="width:${ui.barsPrev[nm] || '0%'};background:${cur > tgt * 1.05 && nm !== 'Protein' && nm !== 'Fibre' ? 'var(--over)' : col}"></div></div><span class="vl">${fmt(cur)} / ${tgt}g</span></div>`;
   const cups = Array.from({ length: p.waterGoal || 8 }, (_, i) => `<button type="button" class="cup ${i < d.water ? 'on' : ''}" data-a="cup" data-i="${i}" aria-label="Cup ${i + 1}${i < d.water ? ', drunk' : ''}">${cupSvg(i < d.water)}</button>`).join('');
   const mealsHtml = S.meals().map(m => {
@@ -174,7 +208,7 @@ VIEWS.today = () => {
     return S.totals(dd.entries).kcal > plan.kcal ? 'var(--over)' : 'var(--ring)';
   };
   return `<div class="screen">
-    <div class="top"><div><div class="kicker">${isToday ? greet : 'Looking back'}</div><h1>samslimmer</h1></div>
+    <div class="top ${buddyOn() ? 'withbuddy' : ''}">${buddyOn() ? buddyHtml(d, plan, isToday) : ''}<div class="grow" style="min-width:0">${buddyOn() ? `<div class="bubble" id="bubble">${esc(buddyLine)}</div>` : ''}<div class="kicker ell">${isToday ? greet : 'Looking back'}</div><h1>samslimmer</h1></div>
       <div class="row" style="gap:8px"><span class="chip" aria-label="${streak} day streak">${I.flame({ s: 16, c: 'var(--flame)', w: 2.4 })}${streak}</span>
         <button type="button" class="chip press" data-a="themeflip" aria-label="Switch to ${isDark() ? 'light' : 'dark'} mode" style="width:38px;justify-content:center;padding:7px 0">${isDark() ? svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', { s: 18 }) : I.moon({ s: 17 })}</button></div></div>
     <div class="row" style="padding:0 14px"><button type="button" class="iconbtn ghost" data-a="dayshift" data-n="-1" aria-label="Previous day">${I.back({ s: 20 })}</button>
@@ -413,6 +447,7 @@ function addFoodNow() {
   const d = S.day(ui.date);
   d.entries.push({ id: S.uid(), meal: sheet.meal, food: clean, amt: sheet.amt, unit: sheet.unit, grams, n, t: Date.now() });
   S.save();
+  if (sheet.mode !== 'edit') buddyEvent(BU.reactTo([clean]));
   const meal = sheet.meal;
   closeSheet(true);
   ui.view = 'today'; render(); window.scrollTo(0, 0);
@@ -793,6 +828,10 @@ VIEWS.me = () => {
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Appearance</div>
         <div class="row" style="gap:6px">${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button type="button" class="pill unit ${(S.state.settings.theme || 'auto') === k ? 'on' : ''}" data-a="theme" data-v="${k}" style="flex:1">${l}</button>`).join('')}</div>
         <div class="small muted">Auto follows your phone's light or dark setting.</div></div>
+      <div class="card rise" style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${S.state.profile ? `<div class="buddyprev" aria-hidden="true">${BU.buddySvg(buddyProps('happy', 76))}</div>` : ''}<div class="grow"><div class="h2">Your little man</div><div class="small muted">Lives in the top bar. His shape follows your height and weigh-ins; his mood follows how healthy today's choices are.</div></div></div>
+        <div class="row"><span class="grow small" style="font-size:14px">Show on Today</span><button type="button" class="switch ${S.state.settings.buddy !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.buddy !== false}" aria-label="Show the little man" data-a="buddyset" data-k="buddy"></button></div>
+        ${S.state.profile && S.state.profile.sex !== 'f' ? `<div class="row"><span class="grow small" style="font-size:14px">Moustache</span><button type="button" class="switch ${S.state.settings.tache !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.tache !== false}" aria-label="Moustache" data-a="buddyset" data-k="tache"></button></div>` : ''}
+        <div class="row"><span class="grow small" style="font-size:14px">Shirt</span><div class="row" style="gap:8px">${[['#C8553D', 'Brick red'], ['#2E8A82', 'Teal'], ['#3B5BA9', 'Blue'], ['#E0A43A', 'Mustard']].map(([c, l]) => `<button type="button" class="swatch press ${(S.state.settings.shirt || '#C8553D') === c ? 'on' : ''}" style="background:${c}" data-a="buddyset" data-k="shirt" data-v="${c}" aria-label="${l} shirt" aria-pressed="${(S.state.settings.shirt || '#C8553D') === c}"></button>`).join('')}</div></div></div>
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Food search country</div><div class="row" style="gap:6px">${opt('country', 'UK', 'United Kingdom')}${opt('country', 'CA', 'Canada')}</div>
         <div class="h2" style="margin-top:4px">Units</div><div class="row" style="gap:6px">${opt('units', 'metric', 'kg & cm')}${opt('units', 'uk', 'st & lb')}${opt('units', 'us', 'lb')}</div></div>
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Water</div>
@@ -1265,6 +1304,7 @@ function multiSheetHtml() {
 function addAllSelected() {
   const pick = ui.pick && ui.recipe, meal = sheet.meal, n = ui.sel.length;
   let kcal = 0;
+  ui.lastAdded = ui.sel.map(x => x.food);
   ui.sel.forEach(x => {
     const f = x.food, u = f.units[x.unit], grams = x.amt * u.g, nn = {};
     S.NUTS.forEach(k => { nn[k] = (f.per[k] || 0) * grams / 100; }); kcal += nn.kcal;
@@ -1277,6 +1317,7 @@ function addAllSelected() {
   S.save();
   ui.sel = []; ui.multi = false; closeSheet(true);
   if (pick) { ui.pick = null; ui.view = 'recipe'; render(); toast(n + ' ingredients added', fmt(kcal) + ' kcal', 'good'); return; }
+  buddyEvent(BU.reactTo(ui.lastAdded || []));
   ui.view = 'today'; render(); window.scrollTo(0, 0);
   if (navigator.vibrate) navigator.vibrate(10);
   toast(n + ' foods added to ' + meal, fmt(kcal) + ' kcal', 'good');
@@ -1324,6 +1365,8 @@ const A = {
     el.classList.remove('popnow'); void el.offsetWidth; el.classList.add('popnow');
     const lbl = document.getElementById('waterlbl');
     if (lbl) lbl.textContent = day.water + ' of ' + (p.waterGoal || 8) + ' cups · ' + ((day.water * (p.cupMl || 250)) / 1000).toFixed(2).replace(/0$/, '') + ' L';
+    if (day.water > before) buddyEvent('splash');
+    refreshBuddy(day.water > before);
     const goal = S.state.profile.waterGoal || 8;
     celebrate(day.water === goal ? 3100 : 300);
     if (day.water === goal) toast('Water goal hit!', 'That\'s ' + ((goal * (S.state.profile.cupMl || 250)) / 1000) + ' litres. You\'re basically a cucumber.', 'good');
@@ -1346,6 +1389,8 @@ const A = {
   retry: () => runOnline(ui.q.trim()),
   scan: () => openScanner(),
   theme: d => { S.state.settings.theme = d.v; S.save(); applyTheme(); render(); },
+  buddy: () => { ui.buddySeed++; if (navigator.vibrate) navigator.vibrate(8); refreshBuddy(true); },
+  buddyset: d => { const st = S.state.settings; if (d.k === 'shirt') st.shirt = d.v; else st[d.k] = st[d.k] === false; S.save(); render(); },
   themeflip: () => { S.state.settings.theme = isDark() ? 'light' : 'dark'; S.save(); applyTheme(); render(); },
   backup: () => exportBackup(),
   restore: () => { const el = document.getElementById('restorefile'); if (el) el.click(); },
@@ -1515,6 +1560,7 @@ function markDone() {
   const day = S.day(ui.date); day.done = true; S.save();
   if (navigator.vibrate) navigator.vibrate([12, 60, 18]);
   const n = S.streak(), isToday = ui.date === S.todayKey();
+  buddyEvent('proud');
   render(); confetti();
   const line = STREAK_LINES[n];
   if (isToday && line) toast(line[0], line[1], 'warm');
