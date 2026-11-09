@@ -172,6 +172,16 @@ function score(food, ws) {
   return s;
 }
 
+// Every food we know about: most used first, then everything else A–Z.
+export function allFoods() {
+  const lib = Object.values(state.foods);
+  const seen = new Set(lib.map(f => f.id));
+  const everything = lib.concat(BASICS.filter(f => !seen.has(f.id)));
+  const used = everything.filter(f => (f.used || 0) > 0).sort((a, b) => (b.used || 0) - (a.used || 0) || a.name.localeCompare(b.name));
+  const rest = everything.filter(f => !(f.used > 0)).sort((a, b) => a.name.localeCompare(b.name));
+  return { used, rest };
+}
+
 export function localSearch(q, tab) {
   const ws = words(q);
   const lib = Object.values(state.foods);

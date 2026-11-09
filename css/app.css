@@ -198,3 +198,31 @@ a { color: var(--accent); }
 .scanner.failed .scan-top { top: 38%; font-size: 16px; font-weight: 700; line-height: 1.4; }
 .scanner.failed .scan-frame { opacity: .25; }
 .step, .addbtn { display: flex; align-items: center; justify-content: center; padding: 0; }
+
+/* ---------- dashboard ---------- */
+.seg { margin: 6px 16px 4px; background: var(--soft2); border-radius: 14px; padding: 4px; display: flex; gap: 4px; }
+.seg button { white-space: nowrap; flex: 1; height: 36px; border: 0; border-radius: 11px; background: transparent; font-size: 13px; font-weight: 700; color: var(--ink2); transition: background .2s, color .2s; }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 4px rgba(31,42,46,.12); }
+@keyframes growY { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+.dbars { position: relative; height: 150px; display: flex; align-items: flex-end; }
+.dbar { flex: 1; min-width: 0; border: 0; padding: 0; transform-origin: bottom; animation: growY .7s cubic-bezier(.2,.8,.2,1) both; }
+.goalline { position: absolute; left: 0; right: 0; border-top: 2px dashed #9AA8AD; z-index: 1; pointer-events: none; }
+.goalline span { position: absolute; right: 0; top: -17px; font-size: 10px; font-weight: 700; color: var(--ink2); background: var(--card); padding: 0 4px; }
+.key { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.mcol { flex: 1; min-width: 0; border: 0; padding: 0; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; outline-offset: 2px; transform-origin: bottom; animation: growY .6s cubic-bezier(.2,.8,.2,1) both; }
+.mcol span { display: block; flex: none; }
+@keyframes pieIn { from { transform: rotate(-90deg) scale(.6); opacity: 0 } to { transform: none; opacity: 1 } }
+.anim .pie { animation: pieIn .7s cubic-bezier(.2,.8,.2,1) both; transform-origin: center; }
+.journey { position: relative; height: 70px; margin: 0 8px; }
+.jtrack { position: absolute; left: 0; right: 0; top: 22px; height: 18px; border-radius: 99px; background: #EEF1F1; overflow: hidden; }
+.jfill { height: 18px; border-radius: 99px; background: var(--ring); transition: width 1s cubic-bezier(.2,.8,.2,1); }
+.jdot { position: absolute; top: 25px; width: 12px; height: 12px; margin-left: -6px; border-radius: 99px; background: var(--card); border: 2px solid; box-sizing: border-box; }
+.jlbl { position: absolute; transform: translateX(-50%); white-space: nowrap; font-size: 10px; font-weight: 800; }
+.jrunner { position: absolute; top: 15px; transform: translateX(-50%); width: 32px; height: 32px; border-radius: 99px; background: var(--ink); border: 3px solid var(--card); box-shadow: 0 3px 10px rgba(31,42,46,.3); display: flex; align-items: center; justify-content: center; transition: left 1s cubic-bezier(.2,.8,.2,1); }
+.mdot { width: 10px; height: 10px; border-radius: 99px; flex: none; background: var(--flame); }
+.mdot.water { background: var(--water-line); } .mdot.target { background: var(--fib); } .mdot.log { background: var(--prot); } .mdot.weight { background: var(--accent); }
+.scell { aspect-ratio: 1; border-radius: 6px; box-sizing: border-box; }
+.anim .scell { animation: pop .35s ease-out both; }
+@keyframes drawLine { from { stroke-dasharray: 0 2000 } to { stroke-dasharray: 2000 0 } }
+.anim .wline { animation: drawLine 1.4s ease-out both; }
+.wchip { font-size: 13px; font-weight: 800; padding: 4px 8px; border-radius: 99px; white-space: nowrap; }
