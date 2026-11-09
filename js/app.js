@@ -274,14 +274,14 @@ VIEWS.foods = () => {
   const kicker = pick ? 'Adding an ingredient to ' + (ui.recipe.name || 'your recipe') : 'Adding to ' + (S.prettyDate(ui.date).toLowerCase() === 'today' ? '' : S.prettyDate(ui.date) + ' · ') + ui.meal;
   return `<div class="screen" ${ui.multi ? 'style="padding-bottom:170px"' : ''}>
     <div class="searchhead">
-      <div class="row" style="justify-content:space-between">${pick ? `<button type="button" class="iconbtn" data-a="backrecipe" aria-label="Back to recipe">${I.back({ s: 20, w: 2.4 })}</button>` : ''}<div class="grow"><div class="small muted ell" style="font-weight:700">${esc(kicker)}</div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px">${pick ? 'Add ingredient' : 'Find a food'}</div></div>
+      <div class="row" style="justify-content:space-between">${pick ? `<button type="button" class="iconbtn" data-a="backrecipe" aria-label="Back to recipe">${I.back({ s: 20, w: 2.4 })}</button>` : ''}<div class="grow"><div class="small muted ell" style="font-weight:700">${esc(kicker)}</div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px;white-space:nowrap">${pick ? 'Add ingredient' : 'Find a food'}</div></div>
+        <button type="button" class="pill ${ui.multi ? 'on' : 'unit'} press" data-a="multi" aria-pressed="${!!ui.multi}" style="display:flex;align-items:center;gap:5px;margin-right:6px">${ui.multi ? I.x({ s: 14, w: 2.6 }) + 'Cancel' : svg('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><path d="M3 17l3 3 5-5M14 18h7"/>', { s: 15 }) + '<span class="lg">Select several</span><span class="sm">Select</span>'}</button>
         <button type="button" class="pill unit on press" data-a="country" aria-label="Food country: ${p.country === 'CA' ? 'Canada' : 'UK'}. Tap to switch" style="display:flex;align-items:center;gap:6px">${I.globe({ s: 16 })}${p.country === 'CA' ? 'Canada' : 'UK'}</button></div>
       <div class="row" style="gap:8px"><label class="searchbox">${I.search({ s: 18, c: 'var(--ink2)', w: 2.4 })}<input id="q" type="search" inputmode="search" autocomplete="off" enterkeyhint="search" placeholder="Search e.g. porridge, Heinz beans…" value="${esc(ui.q)}" data-in="q" aria-label="Search foods"></label>
         <button type="button" class="scan press" data-a="scan" aria-label="Scan a barcode">${I.scan({ c: '#fff' })}</button></div>
-      <div class="row" style="gap:6px"><div class="tabs grow">${tabs.map(([k, l]) => `<button type="button" class="pill ${ui.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${l}</button>`).join('')}</div>
-        <button type="button" class="pill ${ui.multi ? 'on' : ''}" data-a="multi" aria-pressed="${!!ui.multi}" style="display:flex;align-items:center;gap:5px;flex:none">${svg('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><path d="M3 17l3 3 5-5M14 18h7"/>', { s: 15 })}${ui.multi ? 'Done' : 'Select'}</button></div>
+      <div class="tabs">${tabs.map(([k, l]) => `<button type="button" class="pill ${ui.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${l}</button>`).join('')}</div>
     </div>
-    <div class="content"><div id="results" style="display:flex;flex-direction:column;gap:8px">${resultsHtml()}</div>
+    <div class="content"><div id="selstrip">${selStripHtml()}</div><div id="results" style="display:flex;flex-direction:column;gap:8px">${resultsHtml()}</div>
       <div class="row" style="gap:8px"><button type="button" class="btn dashed press" data-a="create">${I.plus({ s: 18, w: 2.6 })}Create food</button>
       ${pick ? '' : `<button type="button" class="btn dashed press" data-a="newrecipe" style="border-color:var(--warm-line);color:var(--warm-ink)">${I.pot({ s: 18 })}Create recipe</button>`}</div>
       <div class="attrib">${F.ATTRIBUTION}</div></div>
@@ -292,9 +292,26 @@ function multiBarHtml() {
   if (!ui.multi) return '';
   const n = ui.sel.length;
   const kc = ui.sel.reduce((a, x) => a + x.food.per.kcal * x.food.units[x.unit].g * x.amt / 100, 0);
-  return `<div class="multibar ${ui.pick ? 'nonav' : ''}"><div class="grow"><div style="font-weight:800">${n ? n + ' selected' : 'Tap foods to select them'}</div><div class="small" style="opacity:.8">${n ? fmt(kc) + ' kcal' : 'Then add them all in one go'}</div></div>${n ? `<button type="button" class="btn press" data-a="multireview" style="width:auto;padding:0 18px;height:46px;font-size:15px">Review &amp; add</button>` : ''}</div>`;
+  return `<div class="multibar ${ui.pick ? 'nonav' : ''}"><div class="grow"><div style="font-weight:800">${n ? n + ' food' + (n > 1 ? 's' : '') + ' ticked · ' + fmt(kc) + ' kcal' : 'Tap foods to tick them'}</div><div class="small" style="opacity:.8">${n ? 'Keep searching to add more, or…' : 'Ticks stay while you search for other things'}</div></div>${n ? `<button type="button" class="btn press" data-a="multireview" style="width:auto;padding:0 16px;height:46px;font-size:15px">Add ${n} ${I.next({ s: 16, c: '#fff', w: 2.6 })}</button>` : ''}</div>`;
 }
-function refreshMulti() { const m = document.getElementById('multibar'); if (m) m.innerHTML = multiBarHtml(); refreshResults(); }
+function selStripHtml() {
+  if (!ui.multi || !ui.sel.length) return '';
+  return `<div class="selstrip"><span class="small muted" style="font-weight:700;flex:none">Ticked:</span>${ui.sel.map(x => `<button type="button" class="selchip ${x.food.id === ui.lastPicked ? 'new' : ''}" data-a="unpick" data-id="${esc(x.food.id)}" aria-label="Untick ${esc(x.food.name)}">${esc(x.food.name.length > 18 ? x.food.name.slice(0, 17) + '…' : x.food.name)}${I.x({ s: 12, w: 2.8 })}</button>`).join('')}</div>`;
+}
+function markRow(id, on) {
+  document.querySelectorAll('#results .res').forEach(row => {
+    if (row.dataset.id !== id) return;
+    row.classList.toggle('picked', on);
+    row.setAttribute('aria-pressed', on);
+    const pk = row.querySelector('.pick');
+    if (pk) { pk.classList.toggle('on', on); pk.innerHTML = on ? I.check({ s: 14, c: '#fff', w: 3 }) : ''; pk.classList.remove('popnow'); if (on) { void pk.offsetWidth; pk.classList.add('popnow'); } }
+  });
+}
+function refreshMulti(id, on) {
+  const m = document.getElementById('multibar'); if (m) m.innerHTML = multiBarHtml();
+  const st = document.getElementById('selstrip'); if (st) st.innerHTML = selStripHtml();
+  if (id != null) markRow(id, on); else refreshResults();
+}
 function refreshResults() { const r = document.getElementById('results'); if (r) r.innerHTML = resultsHtml(); }
 
 let searchTimer = null, searchCtl = null;
@@ -852,7 +869,7 @@ function macroCard(plan) {
   const cols = week.map((k, i) => {
     const x = tots[i], tot = x.p * 4 + x.c * 4 + x.f * 9, h = tot ? Math.max(6, tot / MAXK * WH) : 4, on = k === mday;
     const part = v => (tot ? v / tot * h : 0).toFixed(1) + 'px';
-    return `<button type="button" class="mcol" data-a="mday" data-k="${k}" aria-label="${S.longDate(k)} macros" style="height:${h.toFixed(1)}px;outline:${on ? '2px solid var(--ink)' : '0'};opacity:${on ? 1 : .78}">${tot ? `<span style="height:${part(x.f * 9)};background:var(--fat)"></span><span style="height:${part(x.c * 4)};background:var(--carb)"></span><span style="height:${part(x.p * 4)};background:var(--prot)"></span>` : '<span style="height:100%;background:var(--soft2)"></span>'}</button>`;
+    return `<button type="button" class="mcol" data-a="mday" data-k="${k}" aria-label="${S.longDate(k)} macros" style="height:${h.toFixed(1)}px;outline:${on ? '2px solid var(--ink)' : '0'};opacity:${on ? 1 : .78}">${tot ? `<span style="height:${part(x.f * 9)};background-color:#EAB308;background-color:var(--fat)"></span><span style="height:${part(x.c * 4)};background-color:#F97316;background-color:var(--carb)"></span><span style="height:${part(x.p * 4)};background-color:#6366F1;background-color:var(--prot)"></span>` : '<span style="height:100%;background-color:#E9ECEC;background-color:var(--soft2)"></span>'}</button>`;
   }).join('');
   const labels = week.map(k => `<span style="flex:1;text-align:center;font-size:11px;font-weight:${k === mday ? 800 : 600};color:${k === mday ? 'var(--ink)' : 'var(--ink2)'}">${k === today ? 'Today' : 'MTWTFSS'[(S.parseKey(k).getDay() + 6) % 7]}</span>`).join('');
   const dayLbl = mday === today ? 'Today' : S.longDate(mday);
@@ -1207,6 +1224,24 @@ document.addEventListener('mousemove', e => { if (drag) dragMove(e.clientX, e.cl
 document.addEventListener('mouseup', dragEnd);
 
 /* ================= SELECT SEVERAL ================= */
+let lp = null;
+document.addEventListener('pointerdown', e => {
+  const row = e.target.closest('#results .res');
+  if (!row || ui.multi || ui.view !== 'foods') return;
+  lp = { x: e.clientX, y: e.clientY, row, timer: setTimeout(() => {
+    lp = null; swipeJustEnded = true; setTimeout(() => { swipeJustEnded = false; }, 400);
+    if (navigator.vibrate) navigator.vibrate(15);
+    ui.multi = true; ui.sel = []; render();
+    const again = document.querySelector('#results .res[data-id="' + CSS.escape(row.dataset.id) + '"]');
+    if (again) A.res(again.dataset, again);
+    S.state.settings.multiTip = 1; S.save();
+  }, 480) };
+});
+document.addEventListener('pointermove', e => { if (lp && (Math.abs(e.clientX - lp.x) > 8 || Math.abs(e.clientY - lp.y) > 8)) { clearTimeout(lp.timer); lp = null; } });
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => { if (lp) { clearTimeout(lp.timer); lp = null; } }));
+document.addEventListener('animationend', e => { if (e.target.classList && (e.target.classList.contains('popnow') || e.target.classList.contains('new'))) e.target.classList.remove('popnow', 'new'); });
+document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('#results .res')) e.preventDefault(); });
+
 function multiSheetHtml() {
   const pick = ui.pick && ui.recipe;
   let tot = 0;
@@ -1348,17 +1383,21 @@ const A = {
     const f = findListed(d.id, d.list); if (!f) return;
     if (!ui.multi) { openFoodSheet(f); return; }
     const i = ui.sel.findIndex(x => x.food.id === f.id);
-    if (i >= 0) { ui.sel.splice(i, 1); refreshMulti(); return; }
+    if (i >= 0) { ui.sel.splice(i, 1); refreshMulti(f.id, false); return; }
     if (ui.pick && ui.recipe && f.id === ui.recipe.id) { toast('A recipe can\'t include itself'); return; }
-    const add = food => { const u0 = food.units[0]; ui.sel.push({ food, unit: 0, amt: u0.g === 1 ? 100 : 1 }); refreshMulti(); if (navigator.vibrate) navigator.vibrate(6); };
+    const add = food => { const u0 = food.units[0]; ui.sel.push({ food, unit: 0, amt: u0.g === 1 ? 100 : 1 }); ui.lastPicked = f.id; refreshMulti(f.id, true); ui.lastPicked = null; if (navigator.vibrate) navigator.vibrate(6); };
     if (f.partial) F.cnfDetails(f).then(add).catch(() => toast('Couldn\'t load that food', 'Health Canada\'s database didn\'t answer.'));
     else add(f);
   },
-  multi: () => { ui.multi = !ui.multi; if (!ui.multi) ui.sel = []; render(); },
+  multi: () => {
+    ui.multi = !ui.multi; if (!ui.multi) ui.sel = []; render();
+    if (ui.multi && !S.state.settings.multiTip) { S.state.settings.multiTip = 1; S.save(); toast('Tick as many foods as you like', 'Tip: you can also press and hold any food to start selecting.'); }
+  },
+  unpick: d => { ui.sel = ui.sel.filter(x => x.food.id !== d.id); refreshMulti(d.id, false); },
   multireview: () => { sheet = { type: 'multi', anim: true, meal: ui.meal || defaultMeal() }; pad = null; renderOverlay(); },
   mstep: d => { const x = ui.sel[+d.i]; if (!x) return; const u = x.food.units[x.unit], step = u.g === 1 ? 10 : (u.short === 'oz' || u.short === 'fl oz') ? 1 : 0.5; x.amt = Math.max(step, Math.round((x.amt + step * +d.d) * 100) / 100); renderOverlay(true); },
   munit: d => { const x = ui.sel[+d.i]; if (!x) return; const grams = x.amt * x.food.units[x.unit].g; x.unit = (x.unit + 1) % x.food.units.length; const nu = x.food.units[x.unit]; x.amt = nu.g === 1 ? Math.max(1, Math.round(grams)) : Math.max(0.25, Math.round(grams / nu.g * 4) / 4); renderOverlay(true); },
-  mremove: d => { ui.sel.splice(+d.i, 1); if (!ui.sel.length) { closeSheet(); refreshMulti(); return; } renderOverlay(true); refreshMulti(); },
+  mremove: d => { const x = ui.sel.splice(+d.i, 1)[0]; if (!ui.sel.length) { closeSheet(); refreshMulti(x && x.food.id, false); return; } renderOverlay(true); refreshMulti(x && x.food.id, false); },
   mmeal: d => { sheet.meal = d.m; renderOverlay(true); },
   maddall: () => addAllSelected(),
   toastact: () => { const f = toast.action; $toast.innerHTML = ''; toast.action = null; if (f) f(); },
