@@ -155,7 +155,8 @@ export const SRC = {
   off_ca: { label: 'Canadian product', bg: 'var(--src-ca-bg)', fg: 'var(--src-ca-fg)' },
   off: { label: 'Product', bg: 'var(--src-gen-bg)', fg: 'var(--src-gen-fg)' },
   cnf: { label: 'Canadian Nutrient File', bg: 'var(--src-ca-bg)', fg: 'var(--src-ca-fg)' },
-  mine: { label: 'My food', bg: 'var(--src-mine-bg)', fg: 'var(--src-mine-fg)' }
+  mine: { label: 'My food', bg: 'var(--src-mine-bg)', fg: 'var(--src-mine-fg)' },
+  recipe: { label: 'My recipe', bg: '#FFEBD2', fg: '#92400E' }
 };
 
 /* ---------- local search ---------- */
@@ -176,6 +177,7 @@ export function localSearch(q, tab) {
   const lib = Object.values(state.foods);
   let pool;
   if (tab === 'mine') pool = lib.filter(f => f.src === 'mine');
+  else if (tab === 'recipes') pool = lib.filter(f => f.src === 'recipe').sort((a, b) => (b.used || 0) - (a.used || 0));
   else if (tab === 'recent') pool = state.recents.map(id => state.foods[id]).filter(Boolean);
   else {
     const seen = new Set(lib.map(f => f.id));
@@ -192,8 +194,9 @@ export function localSearch(q, tab) {
     }
     return pool;
   }
-  return pool.map(f => ({ f, s: score(f, ws) + (f.src === 'mine' ? 4 : 0) + Math.min(f.used || 0, 5) }))
-    .filter(x => x.s >= 0).sort((a, b) => b.s - a.s).map(x => x.f).slice(0, 30);
+  return pool.map(f => ({ f, base: score(f, ws) }))
+    .filter(x => x.base >= 0)
+    .map(x => ({ f: x.f, s: x.base + (x.f.src === 'recipe' ? 5 : x.f.src === 'mine' ? 4 : 0) + Math.min(x.f.used || 0, 5) })).sort((a, b) => b.s - a.s).map(x => x.f).slice(0, 30);
 }
 
 /* ---------- Open Food Facts ---------- */
@@ -330,6 +333,7 @@ export const CATS = {
   alcohol: ['<path d="M7 2h10v5a5 5 0 0 1-10 0z"/><path d="M12 12v8M8 21h8M7 6h10"/>', '#F3E8FF', '#7E22CE'],
   oil: ['<path d="M10 2h4v4l2 3v13H8V9l2-3z"/><path d="M8 14h8"/>', '#ECF4E4', '#4D7C0F'],
   pizza: ['<path d="M12 3 3.5 20c5.5 1.6 11.5 1.6 17 0z"/><path d="M5.5 16c4 1 9 1 13 0"/><circle cx="11" cy="12" r="1"/><circle cx="13.5" cy="16" r="1"/>', '#FEECDC', '#C2410C'],
+  recipe: ['<path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M2 10h20M9 6c0-1 1-1 1-2M14 6c0-1 1-1 1-2"/>', '#FFEBD2', '#92400E'],
   meal: ['<circle cx="12" cy="13" r="7"/><circle cx="12" cy="13" r="3.5"/><path d="M3 3v5M5 3v5M4 8v13M21 3c-1.5 1-2 3-2 5h2v13"/>', '#EEF1F1', '#3D4B50']
 };
 const CAT_RULES = [
@@ -357,6 +361,7 @@ const CAT_RULES = [
 ];
 export function catOf(food) {
   if (food.cat && CATS[food.cat]) return food.cat;
+  if (food.src === 'recipe' || food.recipeId) return 'recipe';
   const s = ((food.name || '') + ' ' + (food.brand || '')).toLowerCase();
   for (const [c, re] of CAT_RULES) if (re.test(s)) return c;
   return 'meal';

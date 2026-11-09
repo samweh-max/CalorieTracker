@@ -113,7 +113,9 @@ export function plan() { return state.profile ? calcPlan(state.profile, latestWe
 
 /* ---------- food library ---------- */
 export function rememberFood(food) {
-  state.foods[food.id] = Object.assign({}, food, { used: (state.foods[food.id] && state.foods[food.id].used || 0) + 1 });
+  const prev = state.foods[food.id];
+  // Merge, so logging a recipe never wipes its saved ingredient list.
+  state.foods[food.id] = Object.assign({}, prev || {}, food, prev && prev.recipe ? { recipe: prev.recipe, src: prev.src, cat: prev.cat } : {}, { used: (prev && prev.used || 0) + 1 });
   state.recents = [food.id].concat(state.recents.filter(id => id !== food.id)).slice(0, 40);
 }
 

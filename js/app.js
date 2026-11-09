@@ -1,6 +1,7 @@
 // Samslimmer — main app
 import * as S from './store.js';
 import * as F from './foods.js';
+import { startScanner, validBarcode } from './scan.js';
 
 const $app = document.getElementById('app');
 const $ov = document.getElementById('overlay');
@@ -23,6 +24,8 @@ const I = {
   user: o => svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', o),
   flame: o => svg('<path d="M12 2c1 3 4 5 4 9a4 4 0 0 1-8 0c0-2 1-3 1-3s-3 1-3 6a6 6 0 0 0 12 0c0-6-6-8-6-12z"/>', o),
   plus: o => svg('<path d="M12 5v14M5 12h14"/>', o),
+  minus: o => svg('<path d="M5 12h14"/>', o),
+  pot: o => svg('<path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M2 10h20M9 6c0-1 1-1 1-2M14 6c0-1 1-1 1-2"/>', o),
   back: o => svg('<path d="M15 5l-7 7 7 7"/>', o),
   next: o => svg('<path d="M9 5l7 7-7 7"/>', o),
   check: o => svg('<path d="M5 12l5 5L20 7"/>', o),
@@ -94,7 +97,7 @@ function padKey(k) {
     const [i, d] = b.split('.');
     if (d != null && d.length >= pad.dec) return;
     if (d == null && (i || '').length >= pad.maxInt) return;
-    b = b === '0' ? k : b + k;
+    b = b === '0' && !pad.raw ? k : b + k;
   }
   pad.buf = b; pad.fresh = false;
   const v = parseFloat(b);
@@ -114,6 +117,7 @@ function render() {
 function go(v) {
   if (v !== 'setup' && !S.state.profile) v = 'setup';
   ui.view = v; closeSheet(true);
+  if (v !== 'recipe' && !(v === 'foods' && ui.pick)) ui.pick = null;
   if (v === 'foods') { ui.q = ''; ui.tab = 'all'; ui.online = { q: '', status: 'idle', items: [], cnf: [] }; }
   try { if (location.hash !== '#' + v) history.replaceState(null, '', '#' + v); } catch (e) {}
   render(); window.scrollTo(0, 0);
@@ -156,7 +160,7 @@ VIEWS.today = () => {
     const es = d.entries.filter(e => e.meal === m);
     const kc = es.reduce((s, e) => s + e.n.kcal, 0);
     return `<div class="card rise"><div class="meal-h"><div class="grow"><div class="h2">${esc(m)}</div><div class="small muted">${es.length ? fmt(kc) + ' kcal' : 'Nothing yet'}</div></div>
-      <button type="button" class="addbtn press" data-a="addto" data-meal="${esc(m)}" aria-label="Add food to ${esc(m)}">+</button></div>
+      <button type="button" class="addbtn press" data-a="addto" data-meal="${esc(m)}" aria-label="Add food to ${esc(m)}">${I.plus({ s: 18, w: 2.8 })}</button></div>
       ${es.map(e => `<button type="button" class="entry" data-a="entry" data-id="${e.id}">${F.foodTile(e.food, 32)}<div class="grow"><div class="nm ell">${esc(e.food.name)}</div><div class="am ell">${esc(amountText(e))}${e.food.brand ? ' · ' + esc(e.food.brand) : ''}</div></div><span class="kc">${fmt(e.n.kcal)}</span></button>`).join('')}
     </div>`;
   }).join('');
@@ -220,7 +224,7 @@ function resRow(f, list) {
   return `<button type="button" class="res" data-a="res" data-id="${esc(f.id)}" data-list="${list}">
     ${F.foodTile(f)}
     <div class="grow" style="display:flex;flex-direction:column;gap:3px"><span class="nm ell">${esc(f.name)}</span>
-      <span class="row" style="gap:6px;flex-wrap:wrap">${srcBadge(f)}<span class="small muted ell">${f.brand ? esc(f.brand) + ' · ' : ''}${u ? esc(u.label) : 'Tap for details'}</span></span></div>
+      <span class="row" style="gap:6px;flex-wrap:wrap">${srcBadge(f)}<span class="small muted ell">${f.brand ? esc(f.brand) + ' · ' : ''}${u ? esc(u.label) : 'Tap for details'}${f.recipe ? ' · ' + f.recipe.ings.length + ' ingredients' : ''}</span></span></div>
     ${kcal != null ? `<div style="display:flex;flex-direction:column;align-items:flex-end"><span class="kc">${fmt(kcal)}</span><span class="small muted">kcal</span></div>` : ''}</button>`;
 }
 function resultsHtml() {
@@ -228,10 +232,11 @@ function resultsHtml() {
   const country = S.state.profile.country;
   const q = ui.q.trim();
   let html = '';
-  const lbl = q ? (ui.tab === 'all' ? 'Your foods & everyday basics' : ui.tab === 'mine' ? 'Foods you created' : 'Logged recently')
-    : ui.tab === 'all' ? (S.state.recents.length ? 'Recently used' : 'Everyday basics · search for brands & products') : ui.tab === 'mine' ? 'Foods you created' : 'Logged recently';
+  const tabLbl = { mine: 'Foods you created', recent: 'Logged recently', recipes: 'Your recipes' };
+  const lbl = q ? (ui.tab === 'all' ? 'Your recipes, foods & everyday basics' : tabLbl[ui.tab])
+    : ui.tab === 'all' ? (S.state.recents.length ? 'Recently used' : 'Everyday basics · search for brands & products') : tabLbl[ui.tab];
   if (local.length) html += `<div class="sectionlbl">${lbl}</div><div class="list">${local.map(f => resRow(f, 'local')).join('')}</div>`;
-  else if (ui.tab !== 'all' || !q) html += `<div class="card empty"><span class="h2">${ui.tab === 'mine' ? 'No foods of your own yet' : ui.tab === 'recent' ? 'Nothing logged yet' : 'Nothing here yet'}</span><span class="small muted">${ui.tab === 'mine' ? 'Tap “Create food” to add one from a label.' : 'Foods you log will show up here.'}</span></div>`;
+  else if (ui.tab !== 'all' || !q) html += `<div class="card empty"><span class="h2">${ui.tab === 'mine' ? 'No foods of your own yet' : ui.tab === 'recipes' ? 'No recipes yet' : ui.tab === 'recent' ? 'Nothing logged yet' : 'Nothing here yet'}</span><span class="small muted">${ui.tab === 'mine' ? 'Tap “Create food” to add one from a label.' : ui.tab === 'recipes' ? 'Cooked something? Tap “Create recipe”, add the ingredients, and log it by the portion.' : 'Foods you log will show up here.'}</span></div>`;
   if (ui.tab === 'all' && q.length >= 2) {
     const o = ui.online;
     const cn = country === 'CA' ? 'Canada' : 'the UK';
@@ -248,19 +253,22 @@ function resultsHtml() {
 VIEWS.foods = () => {
   const p = S.state.profile;
   if (!ui.meal) ui.meal = defaultMeal();
-  const tabs = [['all', 'All'], ['recent', 'Recent'], ['mine', 'My foods']];
+  const tabs = [['all', 'All'], ['recent', 'Recent'], ['mine', 'My foods'], ['recipes', 'Recipes']];
+  const pick = ui.pick && ui.recipe;
+  const kicker = pick ? 'Adding an ingredient to ' + (ui.recipe.name || 'your recipe') : 'Adding to ' + (S.prettyDate(ui.date).toLowerCase() === 'today' ? '' : S.prettyDate(ui.date) + ' · ') + ui.meal;
   return `<div class="screen">
     <div class="searchhead">
-      <div class="row" style="justify-content:space-between"><div><div class="small muted" style="font-weight:700">Adding to ${esc(S.prettyDate(ui.date).toLowerCase() === 'today' ? '' : S.prettyDate(ui.date) + ' · ')}${esc(ui.meal)}</div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px">Find a food</div></div>
+      <div class="row" style="justify-content:space-between">${pick ? `<button type="button" class="iconbtn" data-a="backrecipe" aria-label="Back to recipe">${I.back({ s: 20, w: 2.4 })}</button>` : ''}<div class="grow"><div class="small muted ell" style="font-weight:700">${esc(kicker)}</div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px">${pick ? 'Add ingredient' : 'Find a food'}</div></div>
         <button type="button" class="pill unit on press" data-a="country" aria-label="Food country: ${p.country === 'CA' ? 'Canada' : 'UK'}. Tap to switch" style="display:flex;align-items:center;gap:6px">${I.globe({ s: 16 })}${p.country === 'CA' ? 'Canada' : 'UK'}</button></div>
       <div class="row" style="gap:8px"><label class="searchbox">${I.search({ s: 18, c: '#55646A', w: 2.4 })}<input id="q" type="search" inputmode="search" autocomplete="off" enterkeyhint="search" placeholder="Search e.g. porridge, Heinz beans…" value="${esc(ui.q)}" data-in="q" aria-label="Search foods"></label>
         <button type="button" class="scan press" data-a="scan" aria-label="Scan a barcode">${I.scan({ c: '#fff' })}</button></div>
       <div class="tabs">${tabs.map(([k, l]) => `<button type="button" class="pill ${ui.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${l}</button>`).join('')}</div>
     </div>
     <div class="content"><div id="results" style="display:flex;flex-direction:column;gap:8px">${resultsHtml()}</div>
-      <button type="button" class="btn dashed press" data-a="create">${I.plus({ s: 18, w: 2.6 })}Create food</button>
+      <div class="row" style="gap:8px"><button type="button" class="btn dashed press" data-a="create">${I.plus({ s: 18, w: 2.6 })}Create food</button>
+      ${pick ? '' : `<button type="button" class="btn dashed press" data-a="newrecipe" style="border-color:#F5C68A;color:#92400E">${I.pot({ s: 18 })}Create recipe</button>`}</div>
       <div class="attrib">${F.ATTRIBUTION}</div></div>
-    ${nav('foods')}</div>`;
+    ${pick ? '' : nav('foods')}</div>`;
 };
 function refreshResults() { const r = document.getElementById('results'); if (r) r.innerHTML = resultsHtml(); }
 
@@ -297,7 +305,7 @@ function findListed(id, list) {
 
 /* ================= FOOD SHEET ================= */
 function openFoodSheet(food, opts = {}) {
-  sheet = Object.assign({ type: 'food', food, amt: 1, unit: 0, meal: ui.meal || defaultMeal(), mode: 'add', anim: true }, opts);
+  sheet = Object.assign({ type: 'food', food, amt: 1, unit: 0, meal: ui.meal || defaultMeal(), mode: ui.pick ? 'ingadd' : 'add', anim: true }, opts);
   pad = null;
   renderOverlay();
   if (food.partial) {
@@ -321,21 +329,25 @@ function foodSheetHtml() {
   const amtTxt = shown != null ? shown : fmtAmt(sheet.amt);
   const plain = ['g', 'ml', 'oz', 'fl oz'].indexOf(u.short) >= 0;
   const hint = u.short === 'g' ? '≈ ' + g1(grams / 28.35) + ' oz' : u.short === 'ml' ? '≈ ' + g1(grams / 29.57) + ' fl oz' : '= ' + fmt(grams) + (f.liquid ? ' ml' : ' g');
-  const edit = sheet.mode === 'edit';
+  const mode = sheet.mode, ing = mode === 'ingadd' || mode === 'ingedit';
+  const rec = f.recipe;
   return `<div class="sheet ${sheet.anim ? 'anim' : ''} ${padOn ? 'withpad' : ''}" role="dialog" aria-label="${esc(f.name)}">
     <div class="grab"></div>
     <div class="row" style="align-items:flex-start"><div class="grow" style="display:flex;flex-direction:column;gap:4px"><h3>${esc(f.name)}</h3><div class="row" style="gap:6px">${srcBadge(f)}${f.brand ? `<span class="small muted">${esc(f.brand)}</span>` : ''}</div></div>
       <div style="display:flex;flex-direction:column;align-items:flex-end"><span style="font-size:26px;font-weight:800;letter-spacing:-.5px">${fmt(n.kcal)}</span><span class="small muted">kcal</span></div></div>
     <div class="field"><span class="small muted" style="font-weight:700">How much?</span>
-      <div class="row" style="gap:8px;align-items:stretch"><button type="button" class="step press" data-a="amtstep" data-d="-1" aria-label="Less">−</button>
+      <div class="row" style="gap:8px;align-items:stretch"><button type="button" class="step press" data-a="amtstep" data-d="-1" aria-label="Less">${I.minus({ s: 20, w: 2.8 })}</button>
         <button type="button" class="amt ${padOn ? 'on' : ''}" data-a="amtpad" aria-label="Amount ${amtTxt} ${esc(u.short)}. Tap to type"><span class="v">${esc(amtTxt)}</span>${padOn ? '<span class="caret" style="height:26px"></span>' : ''}<span class="u">${plain ? esc(u.short) : '× ' + esc(u.short)}</span></button>
-        <button type="button" class="step press" data-a="amtstep" data-d="1" aria-label="More">+</button></div>
+        <button type="button" class="step press" data-a="amtstep" data-d="1" aria-label="More">${I.plus({ s: 20, w: 2.8 })}</button></div>
       <div class="row" style="gap:6px;flex-wrap:wrap">${f.units.map((x, i) => `<button type="button" class="pill unit ${i === sheet.unit ? 'on' : ''}" data-a="unit" data-i="${i}">${esc(x.label)}</button>`).join('')}</div>
       <span class="small muted">${hint}</span></div>
     ${padOn ? `<div class="row small" style="justify-content:space-between;background:var(--bg);border-radius:12px;padding:8px 12px;font-weight:700;color:#3D4B50"><span>P ${g1(n.p)} g</span><span>C ${g1(n.c)} g</span><span>F ${g1(n.f)} g</span><span>Fibre ${g1(n.fib)} g</span></div>` : `
     <div class="nutgrid">${[['Protein', n.p], ['Carbs', n.c], ['Fat', n.f], ['Fibre', n.fib], ['Sugar', n.sug], ['Sat fat', n.sat], ['Salt', n.salt]].map(([l, v]) => `<div><span>${l}</span><span>${g1(v)} g</span></div>`).join('')}<div><span>Weight</span><span>${fmt(grams)} ${f.liquid ? 'ml' : 'g'}</span></div></div>
-    <div class="row" style="gap:6px;flex-wrap:wrap">${S.meals().map(m => `<button type="button" class="pill unit ${m === sheet.meal ? 'on' : ''}" data-a="smeal" data-m="${esc(m)}" style="flex:1">${esc(m)}</button>`).join('')}</div>
-    ${edit ? `<div class="row" style="gap:8px"><button type="button" class="btn danger press" data-a="delentry" style="width:auto;padding:0 18px" aria-label="Delete entry">${I.trash({ s: 18 })}</button><button type="button" class="btn press" data-a="saveentry">Save changes</button></div>`
+    ${rec && mode === 'add' ? `<div class="row" style="background:#FFF7EC;border-radius:14px;padding:10px 12px"><span class="grow small" style="font-size:13px;color:#7C2D12">${rec.ings.length} ingredients · makes ${rec.portions} portion${rec.portions > 1 ? 's' : ''}${rec.cookedG ? ' · pot weighed ' + fmt(rec.cookedG) + ' g' : ''}</span><button type="button" class="pill" data-a="editrecipe" data-id="${esc(f.id)}" style="background:#FFEBD2;color:#92400E">Edit recipe</button></div>` : ''}
+    ${ing ? '' : `<div class="row" style="gap:6px;flex-wrap:wrap">${S.meals().map(m => `<button type="button" class="pill unit ${m === sheet.meal ? 'on' : ''}" data-a="smeal" data-m="${esc(m)}" style="flex:1">${esc(m)}</button>`).join('')}</div>`}
+    ${mode === 'edit' ? `<div class="row" style="gap:8px"><button type="button" class="btn danger press" data-a="delentry" style="width:auto;padding:0 18px" aria-label="Delete entry">${I.trash({ s: 18 })}</button><button type="button" class="btn press" data-a="saveentry">Save changes</button></div>`
+      : mode === 'ingedit' ? `<div class="row" style="gap:8px"><button type="button" class="btn danger press" data-a="delING" style="width:auto;padding:0 18px" aria-label="Remove ingredient">${I.trash({ s: 18 })}</button><button type="button" class="btn press" data-a="saveING">Save ingredient</button></div>`
+      : mode === 'ingadd' ? `<button type="button" class="btn press" data-a="addfood" ${sheet.amt > 0 ? '' : 'disabled'}>${I.pot({ s: 18, c: '#fff' })} Add to recipe</button>`
       : `<button type="button" class="btn press" data-a="addfood" ${sheet.amt > 0 ? '' : 'disabled'}>Add to ${esc(sheet.meal)}</button>`}`}
   </div>`;
 }
@@ -344,7 +356,16 @@ function addFoodNow() {
   const { grams, n } = sheetNumbers();
   if (!(grams > 0)) return;
   const f = sheet.food;
-  const clean = { id: f.id, name: f.name, brand: f.brand || '', src: f.src, liquid: !!f.liquid, per: f.per, units: f.units, code: f.code };
+  const clean = { id: f.id, name: f.name, brand: f.brand || '', src: f.src, liquid: !!f.liquid, per: f.per, units: f.units, code: f.code, cat: f.cat };
+  if (f.recipe) clean.recipeId = f.id;
+  if (sheet.mode === 'ingadd' && ui.recipe) {
+    if (f.recipe && ui.recipe.id === f.id) { toast('A recipe can\'t include itself'); return; }
+    if (f.src !== 'recipe') S.rememberFood(clean);
+    ui.recipe.ings.push({ id: S.uid(), food: clean, amt: sheet.amt, unit: sheet.unit, grams, n });
+    closeSheet(true); ui.pick = null; ui.view = 'recipe'; render(); window.scrollTo(0, document.body.scrollHeight);
+    toast(f.name + ' added to the recipe', fmt(n.kcal) + ' kcal', 'good');
+    return;
+  }
   S.rememberFood(clean);
   const d = S.day(ui.date);
   d.entries.push({ id: S.uid(), meal: sheet.meal, food: clean, amt: sheet.amt, unit: sheet.unit, grams, n, t: Date.now() });
@@ -357,15 +378,15 @@ function addFoodNow() {
 
 /* ================= CREATE FOOD SHEET ================= */
 const CF_FIELDS = [['size', 'Serving size', 'g', 1], ['kcal', 'Calories', 'kcal', 0], ['p', 'Protein', 'g', 1], ['c', 'Carbs', 'g', 1], ['f', 'Fat', 'g', 1], ['fib', 'Fibre', 'g', 1], ['sug', 'Sugar', 'g', 1], ['sat', 'Sat fat', 'g', 1], ['salt', 'Salt', 'g', 2]];
-function openCreate() {
-  sheet = { type: 'create', anim: true, name: ui.q.trim() ? ui.q.trim().replace(/^./, c => c.toUpperCase()) : '', brand: '', serving: 'serving', basis: 'serving', v: { size: 100, kcal: 0, p: 0, c: 0, f: 0, fib: 0, sug: 0, sat: 0, salt: 0 } };
+function openCreate(code) {
+  sheet = { type: 'create', anim: true, code: code || null, name: ui.q.trim() ? ui.q.trim().replace(/^./, c => c.toUpperCase()) : '', brand: '', serving: 'serving', basis: 'serving', v: { size: 100, kcal: 0, p: 0, c: 0, f: 0, fib: 0, sug: 0, sat: 0, salt: 0 } };
   pad = null; renderOverlay();
 }
 function createSheetHtml() {
   const s = sheet, padOn = !!pad;
   const box = ([k, l, u]) => { const sh = padShown('cf_' + k); return `<div class="field"><span class="small" style="font-weight:700">${l}</span><button type="button" class="numbox ${pad && pad.id === 'cf_' + k ? 'on' : ''}" data-a="cfpad" data-k="${k}" id="cf_${k}"><span class="v">${esc(sh != null ? sh : g1(s.v[k]))}</span>${pad && pad.id === 'cf_' + k ? '<span class="caret" style="height:22px"></span>' : ''}<span class="u">${u}</span></button></div>`; };
   return `<div class="sheet ${s.anim ? 'anim' : ''} ${padOn ? 'withpad' : ''}" role="dialog" aria-label="Create a food" id="cfsheet" style="${padOn ? 'max-height:calc(100dvh - 330px)' : ''}">
-    <div class="grab"></div><div class="row"><h3 class="grow">Create a food</h3><button type="button" class="iconbtn" data-a="close" aria-label="Close">${I.x({ s: 18 })}</button></div>
+    <div class="grab"></div><div class="row"><h3 class="grow">Create a food${s.code ? `<div class="small muted" style="font-weight:600;margin-top:2px">Barcode ${esc(s.code)} · next time it'll scan straight in</div>` : ''}</h3><button type="button" class="iconbtn" data-a="close" aria-label="Close">${I.x({ s: 18 })}</button></div>
     <label class="field"><span class="small" style="font-weight:700">Name</span><input class="input" data-in="cfname" value="${esc(s.name)}" placeholder="e.g. Mum's flapjack" autocomplete="off"></label>
     <label class="field"><span class="small" style="font-weight:700">Brand <span class="muted">(optional)</span></span><input class="input" data-in="cfbrand" value="${esc(s.brand)}" placeholder="e.g. Tesco" autocomplete="off"></label>
     <div class="field"><span class="small" style="font-weight:700">The label shows values…</span><div class="row" style="gap:6px">
@@ -386,7 +407,7 @@ function saveCreated() {
   const units = [];
   if (s.basis === 'serving') units.push({ label: (s.serving || 'serving') + ' (' + g1(size) + ' g)', short: s.serving || 'serving', g: size });
   units.push({ label: 'Grams', short: 'g', g: 1 }, { label: 'Ounces', short: 'oz', g: 28.35 });
-  const food = { id: 'mine:' + S.uid(), name: s.name.trim(), brand: s.brand.trim(), src: 'mine', per, units };
+  const food = { id: 'mine:' + S.uid(), name: s.name.trim(), brand: s.brand.trim(), src: 'mine', per, units, code: s.code || undefined };
   S.state.foods[food.id] = Object.assign({ used: 0 }, food); S.save();
   openFoodSheet(food, { anim: false });
 }
@@ -403,6 +424,7 @@ function renderOverlay(fromPad) {
   let inner = '';
   if (sheet.type === 'food') inner = foodSheetHtml();
   else if (sheet.type === 'create') inner = createSheetHtml();
+  else if (sheet.type === 'barcode') inner = barcodeSheetHtml();
   else if (sheet.type === 'confirm') inner = `<div class="sheet ${sheet.anim ? 'anim' : ''}" role="alertdialog"><div class="grab"></div><h3>${esc(sheet.title)}</h3><div class="small muted" style="font-size:14px">${esc(sheet.body)}</div><div class="row" style="gap:8px"><button type="button" class="btn quiet press" data-a="close">Cancel</button><button type="button" class="btn ${sheet.danger ? 'danger' : ''} press" data-a="confirmyes">${esc(sheet.yes)}</button></div></div>`;
   const keepScroll = document.querySelector('#overlay .sheet');
   const st = keepScroll ? keepScroll.scrollTop : 0;
@@ -540,6 +562,152 @@ function finishSetup() {
   toast(prev ? 'Plan updated' : 'You\'re all set' + (p.name ? ', ' + p.name : '') + '!', fmt(S.plan().kcal) + ' kcal a day.' + (prev ? '' : ' Log your first food with the + buttons.'), 'good');
 }
 
+/* ================= RECIPES ================= */
+function startRecipe(food) {
+  const r = food && food.recipe;
+  ui.recipe = r ? { id: food.id, name: food.name, portions: r.portions, weigh: !!r.cookedG, cookedG: r.cookedG || 0, ings: JSON.parse(JSON.stringify(r.ings)), existing: true }
+    : { id: 'recipe:' + S.uid(), name: '', portions: 4, weigh: false, cookedG: 0, ings: [], existing: false };
+  ui.pick = null; pad = null; closeSheet(true);
+  ui.view = 'recipe'; render(); window.scrollTo(0, 0);
+}
+function recipeTotals(r) {
+  const t = { kcal: 0, p: 0, c: 0, f: 0, fib: 0, sug: 0, sat: 0, salt: 0 };
+  let raw = 0;
+  r.ings.forEach(x => { S.NUTS.forEach(k => { t[k] += x.n[k] || 0; }); raw += x.grams; });
+  const weight = r.weigh && r.cookedG > 0 ? r.cookedG : raw;
+  return { t, raw, weight };
+}
+VIEWS.recipe = () => {
+  const r = ui.recipe;
+  if (!r) { ui.view = 'foods'; return VIEWS.foods(); }
+  const { t, raw, weight } = recipeTotals(r);
+  const n = r.portions, per = k => t[k] / n;
+  const cookedShown = padShown('rcooked');
+  return `<div class="screen" style="padding-bottom:${pad ? '330px' : 'calc(24px + var(--safe-b))'}">
+    <div class="searchhead" style="gap:12px;position:static">
+      <div class="row"><button type="button" class="iconbtn" data-a="rback" aria-label="Back">${I.back({ s: 20, w: 2.4 })}</button>
+        <div class="grow"><div class="small" style="font-weight:800;color:#92400E;display:flex;align-items:center;gap:5px">${I.pot({ s: 14, c: '#92400E' })}RECIPE</div><div style="font-size:20px;font-weight:800;letter-spacing:-.4px">${r.existing ? 'Edit recipe' : 'New recipe'}</div></div>
+        ${r.existing ? `<button type="button" class="iconbtn" data-a="rdelete" aria-label="Delete recipe" style="color:var(--over-ink)">${I.trash({ s: 18 })}</button>` : ''}</div>
+      <label class="field"><span class="small" style="font-weight:700">Recipe name</span><input class="input" data-in="rname" value="${esc(r.name)}" placeholder="e.g. Mum's lentil soup" autocomplete="off" maxlength="60"></label>
+      <div class="row"><div class="grow"><div class="h2">Makes</div><div class="small muted">How many portions you split it into</div></div>
+        <button type="button" class="step press" style="height:44px" data-a="rportions" data-d="-1" aria-label="Fewer portions">${I.minus({ s: 18, w: 2.8 })}</button>
+        <span style="width:56px;text-align:center;font-size:18px;font-weight:800">${n}</span>
+        <button type="button" class="step press" style="height:44px" data-a="rportions" data-d="1" aria-label="More portions">${I.plus({ s: 18, w: 2.8 })}</button></div>
+    </div>
+    <div class="content">
+      <div class="row" style="justify-content:space-between;padding:0 4px"><span class="h2">Ingredients (${r.ings.length})</span><span class="small muted">Whole pot: ${fmt(t.kcal)} kcal</span></div>
+      <div class="list">
+        ${r.ings.map(x => `<div class="row" style="padding:8px 8px 8px 14px;border-bottom:1px solid var(--line)"><button type="button" class="entry" data-a="ing" data-id="${x.id}" style="border:0;padding:0;flex:1;min-width:0">${F.foodTile(x.food, 32)}<div class="grow"><div class="nm ell">${esc(x.food.name)}</div><div class="am ell">${esc(amountText(x))}</div></div><span class="kc">${fmt(x.n.kcal)}</span></button>
+          <button type="button" class="iconbtn ghost" data-a="ingx" data-id="${x.id}" aria-label="Remove ${esc(x.food.name)}" style="width:34px;height:34px;color:var(--ink3)">${I.x({ s: 16 })}</button></div>`).join('')}
+        ${r.ings.length ? '' : `<div class="empty"><span class="small muted">Add everything that goes in the pot. Weigh things <b>before</b> cooking — rice and pasta change a lot once cooked.</span></div>`}
+        <button type="button" class="btn press" data-a="ingadd" style="background:transparent;color:var(--accent);height:48px;font-size:14px">${I.plus({ s: 18, w: 2.6 })}Add ingredient</button>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:8px">
+        <div class="row"><div class="grow"><div class="h2">Weigh the cooked pot</div><div class="small muted">Optional — lets you log it by grams later</div></div>
+          <button type="button" class="switch ${r.weigh ? 'on' : ''}" role="switch" aria-checked="${!!r.weigh}" aria-label="Weigh the cooked pot" data-a="rweigh"></button></div>
+        ${r.weigh ? `<div class="row" style="gap:10px"><span class="grow small" style="font-size:13px;font-weight:700">Cooked weight<br><span class="muted" style="font-weight:600">Raw ingredients add up to ${fmt(raw)} g</span></span>
+          <button type="button" class="numbox ${pad && pad.id === 'rcooked' ? 'on' : ''}" data-a="rcooked" id="rcooked" style="flex:none;width:140px;height:50px"><span class="v">${esc(cookedShown != null ? cookedShown : fmt(r.cookedG))}</span>${pad && pad.id === 'rcooked' ? '<span class="caret" style="height:22px"></span>' : ''}<span class="u">g</span></button></div>
+          <div class="small muted">→ about ${fmt(weight / n)} g per portion</div>` : ''}
+      </div>
+      <div style="background:var(--ink);color:#fff;border-radius:22px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div class="row" style="align-items:flex-end"><div class="grow"><div class="small" style="color:#B9C6CA">Per portion</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1.1">${fmt(per('kcal'))} kcal</div></div><span class="small" style="color:#B9C6CA">1 of ${n}${weight ? ' · ' + fmt(weight / n) + ' g' : ''}</span></div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">${[['Protein', 'p', 'var(--prot)'], ['Carbs', 'c', 'var(--carb)'], ['Fat', 'f', 'var(--fat)'], ['Fibre', 'fib', 'var(--fib)']].map(([l, k, c]) => `<div><div class="small" style="color:#D6DEE0;display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:${c}"></span>${l}</div><div style="font-weight:800">${g1(per(k))} g</div></div>`).join('')}</div>
+      </div>
+      <div class="row" style="gap:8px"><button type="button" class="btn press" data-a="rsave" ${r.ings.length ? '' : 'disabled'}>Save recipe</button><button type="button" class="btn outline press" data-a="rsavelog" ${r.ings.length ? '' : 'disabled'}>Save &amp; log</button></div>
+    </div>
+    ${pad && !sheet ? `<div style="position:fixed;left:0;right:0;bottom:0;z-index:30">${padHtml(pad.shownSetup)}</div>` : ''}
+  </div>`;
+};
+afterRender.recipe = () => { if (pad) { if (!pad.shownSetup) { const el = document.getElementById(pad.id); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } pad.shownSetup = true; } };
+
+function saveRecipe(andLog) {
+  const r = ui.recipe;
+  if (!r.name.trim()) { toast('Give your recipe a name'); const el = document.querySelector('[data-in="rname"]'); if (el) el.focus(); return; }
+  if (!r.ings.length) return;
+  const { t, weight } = recipeTotals(r);
+  if (!(weight > 0)) { toast('Check the ingredient amounts'); return; }
+  const per = {};
+  S.NUTS.forEach(k => { per[k] = t[k] / weight * 100; });
+  const portionG = weight / r.portions;
+  const units = [
+    { label: 'Portion (' + fmt(portionG) + ' g)', short: r.portions > 1 ? 'portions' : 'portion', g: portionG },
+    { label: 'Whole pot (' + fmt(weight) + ' g)', short: 'pots', g: weight },
+    { label: 'Grams', short: 'g', g: 1 }
+  ];
+  const food = { id: r.id, name: r.name.trim(), src: 'recipe', cat: 'recipe', per, units,
+    recipe: { portions: r.portions, cookedG: r.weigh ? r.cookedG : 0, ings: r.ings }, used: (S.state.foods[r.id] && S.state.foods[r.id].used) || 0 };
+  S.state.foods[r.id] = food; S.save();
+  r.saved = true;
+  ui.recipe = null; ui.pick = null; pad = null;
+  ui.view = 'foods'; ui.q = ''; ui.tab = 'recipes'; ui.online = { q: '', status: 'idle', items: [], cnf: [] };
+  render(); window.scrollTo(0, 0);
+  if (andLog) openFoodSheet(food, { mode: 'add' });
+  else toast(food.name + ' saved', fmt(per.kcal * portionG / 100) + ' kcal a portion · find it under Recipes', 'good');
+}
+
+/* ================= BARCODES ================= */
+let stopScan = null;
+function openScanner() {
+  closeScanner();
+  const el = document.createElement('div');
+  el.id = 'scanner';
+  el.innerHTML = `<div class="scanner" role="dialog" aria-label="Barcode scanner">
+    <video playsinline muted></video>
+    <div class="scan-shade"></div>
+    <div class="scan-frame"><i></i><i></i><i></i><i></i><span class="scan-line"></span></div>
+    <div class="scan-top"><span id="scanmsg">Starting the camera…</span></div>
+    <div class="scan-bottom"><button type="button" class="btn quiet press" data-a="scantype">Type the barcode number</button><button type="button" class="btn press" data-a="scanclose" style="background:#3A4A4F">Cancel</button></div></div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+  const msg = t => { const m = document.getElementById('scanmsg'); if (m) m.textContent = t; };
+  startScanner({ video: el.querySelector('video'), onStatus: msg, onCode: code => { if (navigator.vibrate) navigator.vibrate(60); closeScanner(); lookupBarcode(code); } })
+    .then(stop => { if (document.getElementById('scanner')) stopScan = stop; else stop(); })
+    .catch(e => {
+      const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+      msg(e && e.message === 'nocamera' ? 'This browser can\'t use the camera here.' : denied ? 'Camera permission was refused. Allow it in your browser settings, or type the number.' : e && /barcode reader/.test(e.message) ? 'Couldn\'t download the barcode reader (are you online?). You can type the number instead.' : 'The camera didn\'t start. You can type the number instead.');
+      el.querySelector('.scanner').classList.add('failed');
+    });
+}
+function closeScanner() {
+  if (stopScan) { try { stopScan(); } catch (e) {} stopScan = null; }
+  const el = document.getElementById('scanner');
+  if (el) { const v = el.querySelector('video'); if (v && v.srcObject) v.srcObject.getTracks().forEach(t => t.stop()); el.remove(); }
+  if (!sheet) document.body.style.overflow = '';
+}
+function openBarcodeEntry() {
+  sheet = { type: 'barcode', anim: true, code: '' };
+  openPad('bc', { raw: true, dec: 0, maxInt: 14, doneLabel: 'Look it up', apply: (v, b) => { sheet.code = b; }, rerender: still => renderOverlay(still) });
+  renderOverlay();
+}
+function barcodeSheetHtml() {
+  const c = sheet.code || '';
+  const ok = validBarcode(c);
+  return `<div class="sheet ${sheet.anim ? 'anim' : ''} withpad" role="dialog" aria-label="Type a barcode"><div class="grab"></div>
+    <div class="row"><h3 class="grow">Type the barcode</h3><button type="button" class="iconbtn" data-a="close" aria-label="Close">${I.x({ s: 18 })}</button></div>
+    <div class="small muted">The numbers printed under the stripes, usually 13 digits.</div>
+    <button type="button" class="numbox on" style="height:60px;flex:none"><span class="v" style="letter-spacing:2px">${esc(c || ' ')}</span><span class="caret" style="height:26px"></span></button>
+    <div class="small" style="text-align:center;font-weight:700;color:${c.length >= 8 ? (ok ? 'var(--accent)' : 'var(--over-ink)') : 'var(--ink3)'}">${c.length >= 8 ? (ok ? 'Looks like a valid barcode' : 'That doesn\'t look complete yet') : c.length + ' digits'}</div></div>`;
+}
+function lookupTyped() {
+  const c = sheet && sheet.code || '';
+  if (!validBarcode(c)) { if (sheet) { openPad('bc', { raw: true, dec: 0, maxInt: 14, doneLabel: 'Look it up', apply: (v, b) => { sheet.code = b; }, rerender: still => renderOverlay(still) }); pad.buf = c; pad.shown = true; renderOverlay(true); } toast('Check the number', 'Barcodes have 8, 12 or 13 digits. The last digit is a check digit.'); return; }
+  closeSheet(true);
+  lookupBarcode(c);
+}
+async function lookupBarcode(code) {
+  const mine = Object.values(S.state.foods).find(f => f.code === code);
+  if (mine) { openFoodSheet(mine); return; }
+  toast('Looking up ' + code + '…');
+  try {
+    const food = await F.offBarcode(code, S.state.profile.country);
+    $toast.innerHTML = '';
+    if (food) { openFoodSheet(food); return; }
+    confirmSheet('We don\'t know this one yet', 'Barcode ' + code + ' isn\'t in Open Food Facts. Add it from the label and it\'ll scan straight in next time.', 'Add from the label', () => openCreate(code));
+  } catch (e) {
+    toast('Couldn\'t look that up', 'Check your connection and try again.');
+  }
+}
+
 /* ================= ME ================= */
 VIEWS.me = () => {
   const p = S.state.profile, plan = S.plan();
@@ -553,14 +721,14 @@ VIEWS.me = () => {
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Food search country</div><div class="row" style="gap:6px">${opt('country', 'UK', 'United Kingdom')}${opt('country', 'CA', 'Canada')}</div>
         <div class="h2" style="margin-top:4px">Units</div><div class="row" style="gap:6px">${opt('units', 'metric', 'kg & cm')}${opt('units', 'uk', 'st & lb')}${opt('units', 'us', 'lb')}</div></div>
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Water</div>
-        <div class="row"><span class="grow small" style="font-size:14px">Daily goal</span><button type="button" class="step press" style="height:40px" data-a="water" data-f="waterGoal" data-d="-1" aria-label="Fewer cups">−</button><span style="width:70px;text-align:center;font-weight:800">${p.waterGoal || 8} cups</span><button type="button" class="step press" style="height:40px" data-a="water" data-f="waterGoal" data-d="1" aria-label="More cups">+</button></div>
-        <div class="row"><span class="grow small" style="font-size:14px">Cup size</span><button type="button" class="step press" style="height:40px" data-a="water" data-f="cupMl" data-d="-50" aria-label="Smaller cup">−</button><span style="width:70px;text-align:center;font-weight:800">${p.cupMl || 250} ml</span><button type="button" class="step press" style="height:40px" data-a="water" data-f="cupMl" data-d="50" aria-label="Bigger cup">+</button></div></div>
+        <div class="row"><span class="grow small" style="font-size:14px">Daily goal</span><button type="button" class="step press" style="height:40px" data-a="water" data-f="waterGoal" data-d="-1" aria-label="Fewer cups">${I.minus({ s: 18, w: 2.8 })}</button><span style="width:70px;text-align:center;font-weight:800">${p.waterGoal || 8} cups</span><button type="button" class="step press" style="height:40px" data-a="water" data-f="waterGoal" data-d="1" aria-label="More cups">${I.plus({ s: 18, w: 2.8 })}</button></div>
+        <div class="row"><span class="grow small" style="font-size:14px">Cup size</span><button type="button" class="step press" style="height:40px" data-a="water" data-f="cupMl" data-d="-50" aria-label="Smaller cup">${I.minus({ s: 18, w: 2.8 })}</button><span style="width:70px;text-align:center;font-weight:800">${p.cupMl || 250} ml</span><button type="button" class="step press" style="height:40px" data-a="water" data-f="cupMl" data-d="50" aria-label="Bigger cup">${I.plus({ s: 18, w: 2.8 })}</button></div></div>
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Meals</div><div class="small muted">Breakfast, Lunch, Dinner and Snacks are always there. Add your own, e.g. “Pre-workout”.</div>
         ${custom.map(m => `<div class="row"><span class="grow" style="font-weight:700">${esc(m)}</span><button type="button" class="iconbtn" data-a="delmeal" data-m="${esc(m)}" aria-label="Remove ${esc(m)}">${I.x({ s: 16 })}</button></div>`).join('')}
         <div class="row" style="gap:8px"><input class="input" id="newmeal" placeholder="New meal name" maxlength="20" style="height:44px"><button type="button" class="btn press" data-a="addmeal" style="width:auto;padding:0 18px;height:44px">Add</button></div></div>
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Your data</div><div class="small muted">Everything is saved on this phone only — nothing is uploaded. Backup &amp; restore arrives in a later update.</div>
         <button type="button" class="btn danger press" data-a="reset">Delete everything and start again</button></div>
-      <div class="attrib" style="text-align:center">Samslimmer · stage 1 preview</div>
+      <div class="attrib" style="text-align:center">Samslimmer · stage 2 preview</div>
     </div>${nav('me')}</div>`;
 };
 
@@ -603,7 +771,29 @@ const A = {
   tab: d => { ui.tab = d.v; onQuery(ui.q); document.querySelectorAll('.tabs .pill').forEach(b => b.classList.toggle('on', b.dataset.v === d.v)); },
   country: () => { const p = S.state.profile; p.country = p.country === 'CA' ? 'UK' : 'CA'; S.save(); render(); onQuery(ui.q); toast('Food search: ' + (p.country === 'CA' ? 'Canada' : 'UK'), 'Products from ' + (p.country === 'CA' ? 'Canada' : 'the UK') + ' show first.'); },
   retry: () => runOnline(ui.q.trim()),
-  scan: () => toast('Barcode scanning arrives in stage 2', 'For now, search by name or brand.'),
+  scan: () => openScanner(),
+  scanclose: () => closeScanner(),
+  scantype: () => { closeScanner(); openBarcodeEntry(); },
+  bclookup: () => { pad = null; lookupTyped(); },
+  newrecipe: () => { startRecipe(null); },
+  editrecipe: d => { const f = S.state.foods[d.id]; if (f) { closeSheet(true); startRecipe(f); } },
+  backrecipe: () => { ui.pick = null; ui.view = 'recipe'; render(); },
+  ingadd: () => { ui.pick = { type: 'recipe' }; ui.view = 'foods'; ui.q = ''; ui.tab = 'all'; ui.online = { q: '', status: 'idle', items: [], cnf: [] }; render(); window.scrollTo(0, 0); },
+  ing: d => { const it = ui.recipe.ings.find(x => x.id === d.id); if (it) openFoodSheet(it.food, { mode: 'ingedit', ingId: it.id, amt: it.amt, unit: it.unit }); },
+  ingx: d => { const it = ui.recipe.ings.find(x => x.id === d.id); ui.recipe.ings = ui.recipe.ings.filter(x => x.id !== d.id); render(); if (it) toast(it.food.name + ' removed'); },
+  saveING: () => { const it = ui.recipe.ings.find(x => x.id === sheet.ingId); if (it) { const { grams, n } = sheetNumbers(); Object.assign(it, { amt: sheet.amt, unit: sheet.unit, grams, n }); } closeSheet(); render(); },
+  delING: () => { ui.recipe.ings = ui.recipe.ings.filter(x => x.id !== sheet.ingId); closeSheet(); render(); },
+  rportions: d => { ui.recipe.portions = clamp(ui.recipe.portions + +d.d, 1, 30); render(); },
+  rweigh: () => { const r = ui.recipe; r.weigh = !r.weigh; if (r.weigh && !r.cookedG) r.cookedG = Math.round(r.ings.reduce((a, x) => a + x.grams, 0)); pad = null; render(); },
+  rcooked: () => { openPad('rcooked', { dec: 0, maxInt: 5, apply: v => { ui.recipe.cookedG = v; }, rerender: () => render() }); render(); },
+  rsave: () => saveRecipe(false),
+  rsavelog: () => saveRecipe(true),
+  rdelete: () => { const r = ui.recipe; confirmSheet('Delete “' + (r.name || 'this recipe') + '”?', 'It disappears from your recipes. Anything you already logged stays in your history.', 'Delete recipe', () => { delete S.state.foods[r.id]; S.state.recents = S.state.recents.filter(id => id !== r.id); S.save(); ui.recipe = null; go('foods'); ui.tab = 'recipes'; refreshResults(); document.querySelectorAll('.tabs .pill').forEach(b => b.classList.toggle('on', b.dataset.v === 'recipes')); toast('Recipe deleted'); }, true); },
+  rback: () => {
+    const r = ui.recipe;
+    const leave = () => { ui.recipe = null; ui.pick = null; go('foods'); };
+    if (r && r.dirty !== false && r.ings.length && !r.saved) confirmSheet('Leave without saving?', 'Your recipe changes will be lost.', 'Leave', leave, true); else leave();
+  },
   res: d => { const f = findListed(d.id, d.list); if (f) openFoodSheet(f); },
   create: () => openCreate(),
   // sheet
@@ -646,7 +836,11 @@ const A = {
     if (e) toast(e.food.name + ' removed');
   },
   padkey: d => padKey(d.k),
-  paddone: () => { const r = pad && pad.rerender; pad = null; if (ui.view === 'setup' && !sheet) render(); else if (r) renderOverlay(true); },
+  paddone: () => {
+    const r = pad && pad.rerender, id = pad && pad.id; pad = null;
+    if (id === 'bc') { lookupTyped(); return; }
+    if (!sheet) render(); else if (r) renderOverlay(true);
+  },
   // create food
   cfpad: d => {
     const k = d.k, f = CF_FIELDS.find(x => x[0] === k), was = !!pad;
@@ -718,11 +912,13 @@ document.addEventListener('input', e => {
   else if (k === 'cfname') { sheet.name = v; const b = document.querySelector('[data-a="cfsave"]'); if (b) b.disabled = !v.trim(); }
   else if (k === 'cfbrand') sheet.brand = v;
   else if (k === 'cfserving') sheet.serving = v;
+  else if (k === 'rname' && ui.recipe) ui.recipe.name = v;
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'newmeal') A.addmeal();
   if (e.key === 'Enter' && e.target.id === 'q') { clearTimeout(searchTimer); const q = ui.q.trim(); if (q.length >= 2 && ui.tab === 'all') runOnline(q); e.target.blur(); }
-  if (e.key === 'Escape' && sheet) closeSheet();
+  if (e.key === 'Escape' && document.getElementById('scanner')) closeScanner();
+  else if (e.key === 'Escape' && sheet) closeSheet();
   if (pad && !e.target.matches('input') && /^[0-9.]$|^Backspace$/.test(e.key)) { padKey(e.key === 'Backspace' ? 'del' : e.key); e.preventDefault(); }
   if (pad && e.key === 'Enter' && !e.target.matches('input')) A.paddone();
 });
