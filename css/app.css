@@ -40,7 +40,8 @@
 html, body, .card, .list, .nav, .sheet, .searchhead { transition: background-color .3s, color .3s; }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; background: var(--bg); }
+html, body { margin: 0; height: 100%; background: var(--bg); touch-action: manipulation; }
+button, a, input, label { touch-action: manipulation; }
 body { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
 button, input { font-family: inherit; color: inherit; }
 button { cursor: pointer; }
@@ -157,11 +158,11 @@ a { color: var(--accent-ink); }
 .ov { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(31,42,46,.45); animation: fade .2s ease-out both; }
 .ov.still { animation: none; }
 .ov .backdrop { flex: 1; border: 0; background: transparent; min-height: 40px; }
-.sheet { background: var(--card); border-radius: 28px 28px 0 0; padding: 10px 18px calc(18px + var(--safe-b)); display: flex; flex-direction: column; gap: 12px; max-width: 480px; width: 100%; margin: 0 auto; max-height: calc(100dvh - 40px); overflow-y: auto; }
+.sheet { overscroll-behavior: contain; background: var(--card); border-radius: 28px 28px 0 0; padding: 10px 18px calc(18px + var(--safe-b)); display: flex; flex-direction: column; gap: 12px; max-width: 480px; width: 100%; margin: 0 auto; max-height: calc(100dvh - 40px); overflow-y: auto; }
 .sheet.anim { animation: sheetUp .32s cubic-bezier(.2,.8,.2,1) both; }
 .sheet.withpad { padding-bottom: 12px; border-radius: 28px 28px 0 0; }
 .sheet > * { flex-shrink: 0; }
-.grab { width: 40px; height: 5px; border-radius: 99px; background: var(--dim2); align-self: center; flex: none; }
+.grab { cursor: grab; touch-action: none; position: relative; width: 40px; height: 5px; border-radius: 99px; background: var(--dim2); align-self: center; flex: none; }
 .sheet h3 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
 .amt { flex: 1; height: 56px; border-radius: 16px; border: 2px solid var(--line2); background: var(--card); display: flex; align-items: center; justify-content: center; gap: 6px; }
 .amt.on { border-color: var(--accent); background: var(--accent-wash); }
@@ -273,3 +274,12 @@ a { color: var(--accent-ink); }
 .multibar { position: fixed; left: 0; right: 0; margin: 0 auto; bottom: calc(92px + var(--safe-b)); width: calc(100% - 32px); max-width: 448px; z-index: 21; background: var(--hero); color: var(--hero-ink); border-radius: 18px; padding: 10px 10px 10px 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.25); animation: rise .25s ease-out both; }
 .multibar.nonav { bottom: calc(16px + var(--safe-b)); }
 .tabs.grow { min-width: 0; }
+
+.dobrow .numbox { min-width: 0; height: 52px; }
+.dobrow .numbox:nth-child(3) { flex: 1.5; }
+.dobrow .numbox .v { font-size: 20px; }
+.dobrow .numbox .u { font-size: 12px; }
+
+.grab::before { content: ''; position: absolute; left: -40px; right: -40px; top: -14px; bottom: -14px; }
+.sheet { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.sheet input, .sheet textarea { -webkit-user-select: text; user-select: text; }

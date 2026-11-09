@@ -478,6 +478,7 @@ function startSetup(edit) {
   ui.su = p ? Object.assign({ step: edit ? 1 : 0, wkg: S.latestWeight(), editing: true }, JSON.parse(JSON.stringify(p))) :
     { step: 0, name: '', country: 'UK', units: 'metric', sex: 'm', dob: '', hcm: 175, wkg: 80, gkg: 72, act: 1, pace: -0.5, preset: 'bal', own: false, ownKcal: 2000, goalTouched: false };
   if (ui.su.wkg == null) ui.su.wkg = ui.su.startKg;
+  if (ui.su.dob) { const [y, m, d] = ui.su.dob.split('-').map(Number); ui.su.by = y; ui.su.bm = m; ui.su.bd = d; }
   pad = null;
 }
 const SU_TITLES = [
@@ -495,6 +496,9 @@ function fmtW(kg, units) { if (units === 'metric') return g1(kg) + ' kg'; if (un
 function suFields(su) {
   const inches = su.hcm / 2.54; let ft = Math.floor(inches / 12), inch = Math.round(inches - ft * 12); if (inch === 12) { ft++; inch = 0; }
   const B = {
+    b_d: { get: () => su.bd || '', set: v => { su.bd = v; syncDob(su); }, unit: 'day', dec: 0, max: 2, ph: 'DD' },
+    b_m: { get: () => su.bm || '', set: v => { su.bm = v; syncDob(su); }, unit: 'month', dec: 0, max: 2, ph: 'MM' },
+    b_y: { get: () => su.by || '', set: v => { su.by = v; syncDob(su); }, unit: 'year', dec: 0, max: 4, ph: 'YYYY' },
     m_p: { get: () => Math.round(su.mp), set: v => { su.mp = v; }, unit: 'g', dec: 0, max: 3 },
     m_c: { get: () => Math.round(su.mc), set: v => { su.mc = v; }, unit: 'g', dec: 0, max: 3 },
     m_f: { get: () => Math.round(su.mf), set: v => { su.mf = v; }, unit: 'g', dec: 0, max: 3 },
@@ -514,9 +518,14 @@ function suFields(su) {
   });
   return B;
 }
+function syncDob(su) {
+  const d = +su.bd, m = +su.bm, y = +su.by;
+  const dt = new Date(y, m - 1, d);
+  su.dob = y >= 1900 && m >= 1 && m <= 12 && d >= 1 && dt.getMonth() === m - 1 && dt.getDate() === d && dt <= new Date() ? S.keyOf(dt) : '';
+}
 function suBox(id, B) {
-  const b = B[id], on = pad && pad.id === id, sh = padShown(id);
-  return `<button type="button" class="numbox ${on ? 'on' : ''}" data-a="supad" data-id="${id}" id="${id}" aria-label="${b.unit}"><span class="v">${esc(sh != null ? sh : b.get())}</span>${on ? '<span class="caret" style="height:24px"></span>' : ''}<span class="u">${b.unit}</span></button>`;
+  const b = B[id], on = pad && pad.id === id, sh = padShown(id), val = sh != null ? sh : b.get();
+  return `<button type="button" class="numbox ${on ? 'on' : ''}" data-a="supad" data-id="${id}" id="${id}" aria-label="${b.unit}"><span class="v" ${val === '' ? 'style="color:var(--dim)"' : ''}>${esc(val === '' ? (b.ph || '0') : val)}</span>${on ? '<span class="caret" style="height:24px"></span>' : ''}<span class="u">${b.unit}</span></button>`;
 }
 VIEWS.setup = () => {
   const su = ui.su || (startSetup(), ui.su);
@@ -536,7 +545,7 @@ VIEWS.setup = () => {
       <span class="small muted">You can change all of this later in Me.</span></div>`;
   if (st === 1) body = `
     <div class="field"><span class="label">Sex <span class="muted" style="font-weight:600">(only used in the calorie formula)</span></span><div class="row" style="gap:8px">${opt('sex', 'm', 'Male', '', 'style="flex:1;text-align:center"')}${opt('sex', 'f', 'Female', '', 'style="flex:1;text-align:center"')}</div></div>
-    <label class="field"><span class="label">Birthday</span><input class="input" type="date" data-in="sudob" value="${esc(su.dob || '')}" min="1910-01-01" max="${S.todayKey()}" aria-label="Birthday"><span class="small muted" id="agehint">${su.dob ? 'You\'re ' + S.ageOf(su.dob) + '. Your plan updates itself on your birthday.' : 'Used to work out your age — it keeps your plan right as the years go by.'}</span></label>
+    <div class="field"><span class="label">Birthday</span><div class="row dobrow" style="gap:8px">${suBox('b_d', B)}${suBox('b_m', B)}${suBox('b_y', B)}</div><span class="small muted" id="agehint">${su.dob ? 'You\'re ' + S.ageOf(su.dob) + '. Your plan updates itself on your birthday.' : 'Day, month and year — used to work out your age.'}</span></div>
     <div class="field"><span class="label">Height</span><div class="row" style="gap:8px">${hBoxes}</div><span class="small muted">${u === 'metric' ? '≈ ' + B.h_ft.get() + ' ft ' + B.h_in.get() + ' in' : '≈ ' + Math.round(su.hcm) + ' cm'}</span></div>`;
   if (st === 2) {
     let thing = WEIGHT_THINGS[0][1]; WEIGHT_THINGS.forEach(t => { if (diff >= t[0] - 0.3) thing = t[1]; });
@@ -1145,6 +1154,58 @@ function removeEntry(id) {
   toast(e.food.name + ' removed', fmt(e.n.kcal) + ' kcal taken off ' + e.meal, '', { label: 'Undo', fn: () => { const d2 = S.day(key); d2.entries.splice(Math.min(i, d2.entries.length), 0, e); S.save(); if (ui.view === 'today') render(); } });
 }
 
+/* ================= SWIPE DOWN TO CLOSE CARDS ================= */
+// Touch events (not pointer events) so we can stop the page scrolling while a card is dragged.
+let drag = null;
+function dragStart(x, y, target) {
+  const ov = target.closest && target.closest('#overlay .ov');
+  if (!ov || !sheet) return;
+  const sh = ov.querySelector('.sheet'); if (!sh) return;
+  const inSheet = target.closest('.sheet'), onGrab = target.closest('.grab');
+  if (!inSheet && !target.closest('.pad')) return;
+  drag = { x, y, dy: 0, t: Date.now(), active: false, ov, sh, pad: ov.querySelector('.pad'), fromTop: onGrab || sh.scrollTop <= 0 };
+}
+function dragMove(x, y, e) {
+  if (!drag) return;
+  const dy = y - drag.y, dx = x - drag.x;
+  if (!drag.active) {
+    if (dy > 8 && Math.abs(dx) < dy && drag.fromTop && drag.sh.scrollTop <= 0) {
+      drag.active = true;
+      [drag.sh, drag.pad].forEach(el => { if (el) { el.style.transition = 'none'; el.style.animation = 'none'; } });
+    } else if (Math.abs(dy) > 8 || Math.abs(dx) > 8) { drag = null; return; }
+    else return;
+  }
+  if (e && e.cancelable) e.preventDefault();
+  drag.dy = dy;
+  const t = dy > 0 ? dy : dy * 0.2;
+  [drag.sh, drag.pad].forEach(el => { if (el) el.style.transform = `translateY(${t}px)`; });
+  drag.ov.style.background = `rgba(31,42,46,${(0.45 * Math.max(0, 1 - dy / 500)).toFixed(3)})`;
+}
+function dragEnd() {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (!d.active) return;
+  swipeJustEnded = true; setTimeout(() => { swipeJustEnded = false; }, 80);
+  const fast = d.dy / Math.max(1, Date.now() - d.t) > 0.6;
+  const els = [d.sh, d.pad].filter(Boolean);
+  if (d.dy > 110 || (d.dy > 45 && fast)) {
+    els.forEach(el => { el.style.transition = 'transform .2s ease-in'; el.style.transform = 'translateY(110%)'; });
+    d.ov.style.transition = 'background .2s'; d.ov.style.background = 'rgba(31,42,46,0)';
+    setTimeout(() => closeSheet(), 190);
+  } else {
+    els.forEach(el => { el.style.transition = 'transform .25s cubic-bezier(.2,.8,.2,1)'; el.style.transform = ''; });
+    d.ov.style.background = '';
+  }
+}
+document.addEventListener('touchstart', e => { if (e.touches.length === 1) dragStart(e.touches[0].clientX, e.touches[0].clientY, e.target); }, { passive: true });
+document.addEventListener('touchmove', e => { if (drag && e.touches.length === 1) dragMove(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false });
+document.addEventListener('touchend', dragEnd);
+document.addEventListener('touchcancel', dragEnd);
+// Mouse support (desktop testing)
+document.addEventListener('mousedown', e => dragStart(e.clientX, e.clientY, e.target));
+document.addEventListener('mousemove', e => { if (drag) dragMove(e.clientX, e.clientY, e); });
+document.addEventListener('mouseup', dragEnd);
+
 /* ================= SELECT SEVERAL ================= */
 function multiSheetHtml() {
   const pick = ui.pick && ui.recipe;
@@ -1365,7 +1426,11 @@ const A = {
   suset: d => { const su = ui.su; const v = d.v; su[d.f] = (d.f === 'act' || d.f === 'pace') ? +v : v; if (d.f === 'country' && v === 'CA' && su.units === 'uk') su.units = 'us'; pad = null; render(); },
   supad: d => {
     const B = suFields(ui.su), b = B[d.id], was = !!pad;
-    openPad(d.id, { dec: b.dec, maxInt: b.max, apply: v => { suFields(ui.su)[d.id].set(v); }, rerender: () => render() });
+    const NEXT = { b_d: 'b_m', b_m: 'b_y' };
+    openPad(d.id, { dec: b.dec, maxInt: b.max, raw: d.id.startsWith('b_'), apply: (v, buf) => {
+      suFields(ui.su)[d.id].set(v);
+      if (NEXT[d.id] && buf.length >= 2) setTimeout(() => A.supad({ id: NEXT[d.id] }), 0);
+    }, rerender: () => render() });
     if (was) pad.shownSetup = true;
     render();
   },
@@ -1378,7 +1443,7 @@ const A = {
   usegoal: () => { const su = ui.su; su.gkg = S.suggestGoal(su.hcm, su.wkg, su.sex).goal; su.goalTouched = true; pad = null; render(); },
   sunext: () => {
     const su = ui.su;
-    if (su.step === 1 && !su.dob) { toast('Add your birthday', 'It\'s used to work out your calorie needs.'); return; }
+    if (su.step === 1 && !su.dob) { toast(su.bd || su.bm || su.by ? 'Check your birthday' : 'Add your birthday', su.bd || su.bm || su.by ? 'That date doesn\'t look right — day, month, then a 4-digit year.' : 'It\'s used to work out your calorie needs.'); return; }
     if (su.step === 1 && (S.ageOf(su.dob) < 13 || S.ageOf(su.dob) > 110)) { toast('Check your birthday', 'Samslimmer is made for adults.'); return; }
     if (su.step === 1 && !su.goalTouched && !su.editing) su.gkg = S.suggestGoal(su.hcm, su.wkg, su.sex).goal;
     if (su.step === 1 && (su.hcm < 120 || su.hcm > 230)) { toast('Check your height', 'That height looks unusual — double-check the units.'); return; }
