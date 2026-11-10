@@ -128,10 +128,15 @@ function padKey(k) {
 function padShown(id) { return pad && pad.id === id && !pad.fresh ? (pad.buf === '' ? '0' : pad.buf) : null; }
 
 /* ---------------- rendering ---------------- */
+const NAV_ORDER = ['today', 'dash', 'foods', 'weight', 'me'];
 function render() {
   const anim = ui.view !== ui.lastView;
+  // page change: slide in from the side you're heading to (nav order), never blocking taps
+  const a0 = NAV_ORDER.indexOf(ui.lastView), a1 = NAV_ORDER.indexOf(ui.view);
+  const dir = !anim || ui.lastView == null ? '' : a0 < 0 || a1 < 0 ? 'up' : a1 > a0 ? 'r' : 'l';
+  ui.navFrom = anim && a0 >= 0 ? a0 : (ui.navFrom != null && !anim ? a1 : a1);
   ui.lastView = ui.view;
-  $app.className = anim ? 'anim' : '';
+  $app.className = anim ? 'anim' + (dir ? ' pagein-' + dir : '') : '';
   $app.innerHTML = (VIEWS[ui.view] || VIEWS.today)();
   afterRender[ui.view] && afterRender[ui.view](anim);
 }
@@ -147,7 +152,9 @@ function go(v) {
 
 function nav(on) {
   const it = [['today', 'Today', I.home], ['dash', 'Dashboard', I.chart], ['foods', 'Foods', I.search], ['weight', 'Weight', I.scale], ['me', 'Me', I.user]];
-  return `<nav class="nav" aria-label="Main">${it.map(([k, l, ic]) => `<a href="#${k}" data-a="go" data-v="${k}" class="${on === k ? 'on' : ''}" ${on === k ? 'aria-current="page"' : ''}>${ic()}${l}</a>`).join('')}</nav>`;
+  const to = NAV_ORDER.indexOf(on), from = ui.navFrom != null && ui.navFrom >= 0 ? ui.navFrom : to;
+  ui.navFrom = to;
+  return `<nav class="nav" aria-label="Main"><span class="navpill" aria-hidden="true" style="--from:${from};--to:${to}"></span>${it.map(([k, l, ic]) => `<a href="#${k}" data-a="go" data-v="${k}" class="${on === k ? 'on' : ''}" ${on === k ? 'aria-current="page"' : ''}>${ic()}${l}</a>`).join('')}</nav>`;
 }
 
 /* ================= TODAY ================= */
@@ -1791,8 +1798,27 @@ document.addEventListener('click', e => {
   const t = e.target.closest('[data-a]');
   if (!t || t.disabled) return;
   const fn = A[t.dataset.a];
+  const key = t.matches(BOUNCE) ? bounceKey(t) : null;
   if (fn) fn(t.dataset, t, e);
+  if (key) boing(key, t);
 });
+// Little springy bounce on chips, tabs and toggles, re-found after a re-render so it always plays.
+const BOUNCE = '.pill, .seg button, .swatch, .nav a, .mcol2, .switch, .selchip-main, .cf-icons button, .step, .iconbtn, .scell';
+function bounceKey(t) {
+  let k = '[data-a="' + t.dataset.a + '"]';
+  ['v', 'k', 'm', 'i', 'f', 'd', 'id'].forEach(n => { if (t.dataset[n] != null) k += '[data-' + n + '="' + (window.CSS && CSS.escape ? CSS.escape(t.dataset[n]) : t.dataset[n]) + '"]'; });
+  return k;
+}
+function boing(key, t) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  requestAnimationFrame(() => {
+    let el = null; try { el = document.querySelector(key); } catch (e) {}
+    if (!el && t.isConnected) el = t;
+    if (!el) return;
+    el.classList.remove('boing'); void el.offsetWidth; el.classList.add('boing');
+  });
+}
+document.addEventListener('animationend', e => { if (e.animationName === 'boing' && e.target.classList) e.target.classList.remove('boing'); });
 document.addEventListener('input', e => {
   const k = e.target.dataset && e.target.dataset.in;
   if (!k) return;
