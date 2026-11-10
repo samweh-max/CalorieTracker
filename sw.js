@@ -1,5 +1,5 @@
 // Samslimmer service worker: keeps the app working offline. Food searches still need the internet.
-const CACHE = 'samslimmer-v13';
+const CACHE = 'samslimmer-v14';
 const SHELL = ['./', './index.html', './css/app.css', './js/app.js', './js/store.js', './js/foods.js', './js/scan.js', './js/stats.js', './js/buddy.js', './js/report.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

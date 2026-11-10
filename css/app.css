@@ -1,4 +1,5 @@
 :root {
+  --water-bg: #EAF6FD;
   --buddy-bg: #F4EBDD;
   --bg: #F5F6F6; --card: #FFFFFF; --ink: #1F2A2E; --ink2: #55646A; --ink3: #7A888D;
   --line: #F0F3F3; --line2: #E3E8E8; --soft: #F0F3F3; --soft2: #E9ECEC;
@@ -22,6 +23,7 @@
   --safe-t: env(safe-area-inset-top, 0px);
 }
 :root[data-theme="dark"] {
+  --water-bg: #13283A;
   --buddy-bg: #E9DFCF;
   --bg: #0E1416; --card: #182124; --ink: #E6ECED; --ink2: #A2B0B4; --ink3: #7F8D91;
   --line: #222D30; --line2: #2C383C; --soft: #222D30; --soft2: #1D2629;
@@ -125,10 +127,12 @@ a { color: var(--accent-ink); }
 .bar { display: flex; align-items: center; gap: 10px; }
 .bar .nm { width: 58px; font-size: 13px; font-weight: 700; }
 .bar .tr { flex: 1; height: 10px; background: var(--track); border-radius: 99px; overflow: hidden; }
-.bar .fl { forced-color-adjust: none; height: 10px; border-radius: 99px; transition: width .8s cubic-bezier(.2,.8,.2,1); }
+.bar .fl { forced-color-adjust: none; height: 10px; border-radius: 99px; min-width: 0; transform-origin: left center; }
+.bar .fl.grow { animation: barGrow .8s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes barGrow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 .bar .vl { width: 78px; text-align: right; font-size: 13px; font-weight: 600; color: var(--ink2); }
 .cups { display: flex; justify-content: space-between; flex-wrap: wrap; }
-.cup { border: 0; background: transparent; padding: 0; width: 38px; height: 44px; display: flex; align-items: center; justify-content: center; transition: transform .12s; }
+.cup { position: relative; border: 0; background: transparent; padding: 0; width: 38px; height: 46px; display: flex; align-items: center; justify-content: center; transition: transform .12s; }
 .cup:active { transform: scale(.86); }
 .cup.popnow svg { animation: pop .3s ease-out; }
 .meal-h { display: flex; align-items: center; gap: 10px; }
@@ -407,3 +411,23 @@ a { color: var(--accent-ink); }
 .nl-num.big { min-width: 110px; height: 44px; }
 .nl-num.big .v { font-size: 28px; font-weight: 900; letter-spacing: -1px; }
 .nl-panel .nl-num { height: 44px; min-width: 76px; background: var(--card); }
+
+/* ---------- lively water glasses ---------- */
+.cw-wave { animation: cwWave 2.4s linear infinite; }
+.cw-wave2 { animation: cwWave 3.6s linear infinite reverse; }
+@keyframes cwWave { from { transform: translateX(0) } to { transform: translateX(16px) } }
+.cw-fill.rise { animation: cwRise .6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes cwRise { from { transform: translateY(28px) } to { transform: none } }
+.cw-bub { animation: cwBub 2.6s ease-in infinite; }
+.cw-bub.b2 { animation-delay: .9s; animation-duration: 3.1s; }
+.cw-bub.b3 { animation-delay: 1.7s; animation-duration: 2.2s; }
+@keyframes cwBub { 0% { transform: translateY(0); opacity: 0 } 15% { opacity: .85 } 80% { opacity: .7 } 100% { transform: translateY(-17px); opacity: 0 } }
+.cup.on:nth-child(odd) .cw-wave { animation-duration: 2.9s; }
+.splash { position: absolute; left: 50%; top: 6px; width: 0; height: 0; pointer-events: none; }
+.splash i { position: absolute; width: 6px; height: 6px; margin: -3px; border-radius: 50% 50% 50% 0; background: var(--water-line); animation: splashOut .6s ease-out forwards; }
+.splash i:nth-child(1) { --dx: -16px; --dy: -14px; } .splash i:nth-child(2) { --dx: 16px; --dy: -14px; } .splash i:nth-child(3) { --dx: 0px; --dy: -20px; } .splash i:nth-child(4) { --dx: -10px; --dy: -22px; width: 4px; height: 4px; } .splash i:nth-child(5) { --dx: 11px; --dy: -21px; width: 4px; height: 4px; }
+@keyframes splashOut { from { transform: translate(0, 0) scale(.6) rotate(-45deg); opacity: 1 } to { transform: translate(var(--dx), var(--dy)) scale(1) rotate(-45deg); opacity: 0 } }
+@media (prefers-reduced-motion: reduce) { .cw-wave, .cw-wave2, .cw-bub, .cw-fill.rise { animation: none !important; } .cw-bub { opacity: 0; } }
+.restorecard { display: flex; align-items: center; gap: 12px; background: var(--accent-wash); border: 1.5px dashed var(--ring-soft); border-radius: 18px; padding: 12px 14px; margin-top: 4px; }
+.fixlink { align-self: center; border: 0; background: transparent; color: var(--ink2); font: inherit; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; flex-shrink: 0; }
+.fixnote { display: flex; gap: 8px; align-items: flex-start; background: var(--warm-bg); color: var(--warm-ink2); border-radius: 14px; padding: 9px 12px; font-size: 12.5px; font-weight: 700; flex-shrink: 0; }

@@ -41,7 +41,20 @@ const I = {
   moon: o => svg('<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>', o),
   trash: o => svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>', o)
 };
-const cupSvg = (on) => `<svg width="26" height="32" viewBox="0 0 26 32" aria-hidden="true"><path d="M3 3h20l-2.5 26h-15z" fill="${on ? 'var(--water)' : 'var(--card)'}" stroke="${on ? 'var(--water-line)' : 'var(--dim2)'}" stroke-width="2" stroke-linejoin="round"/></svg>`;
+// A little glass: wobbly water with bubbles when full, a ghost "+" when empty. rise = fill up from the bottom.
+const cupSvg = (on, i = 'x', rise = false) => {
+  const glass = 'M5 5h22l-2.6 29.2a3 3 0 0 1-3 2.8H10.6a3 3 0 0 1-3-2.8z';
+  return `<svg width="32" height="40" viewBox="0 0 32 40" aria-hidden="true"><defs><clipPath id="cg${i}"><path d="${glass}"/></clipPath></defs>
+    <path d="${glass}" fill="${on ? 'var(--water-bg)' : 'var(--card)'}"/>
+    ${on ? `<g clip-path="url(#cg${i})"><g class="cw-fill ${rise ? 'rise' : ''}">
+      <path class="cw-wave2" d="M-24 11 q4 -2.4 8 0 t8 0 t8 0 t8 0 t8 0 t8 0 t8 0 t8 0 V40 H-24z" fill="var(--water-line)" opacity=".35"/>
+      <path class="cw-wave" d="M-24 12.5 q4 2.4 8 0 t8 0 t8 0 t8 0 t8 0 t8 0 t8 0 t8 0 V40 H-24z" fill="var(--water)"/>
+      <circle class="cw-bub" cx="12" cy="32" r="1.5" fill="#fff" opacity=".8"/><circle class="cw-bub b2" cx="19" cy="34" r="1.1" fill="#fff" opacity=".8"/><circle class="cw-bub b3" cx="16" cy="30" r=".9" fill="#fff" opacity=".8"/>
+    </g></g>` : `<path d="M16 17v8M12 21h8" stroke="var(--dim2)" stroke-width="2" stroke-linecap="round" opacity=".7"/>`}
+    <path d="${glass}" fill="none" stroke="${on ? 'var(--water-line)' : 'var(--dim2)'}" stroke-width="2" stroke-linejoin="round" ${on ? '' : 'stroke-dasharray="3.2 2.6"'}/>
+    <path d="M9 9l1.4 18" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="${on ? '.65' : '0'}"/>
+  </svg>`;
+};
 
 function toast(head, sub = '', cls = '', action = null) {
   toast.action = action ? action.fn : null;
@@ -163,7 +176,7 @@ function buddyProps(mood, size) {
 }
 function buddyHtml(d, plan, isToday) {
   const mood = buddyMood(d, plan, isToday);
-  return `<button type="button" class="buddy press" id="buddy" data-a="buddy" data-mood="${mood}" aria-label="Your little man looks ${BU.MOOD_NAMES[mood]}. Tap him.">${BU.buddySvg(buddyProps(mood))}</button>`;
+  return `<button type="button" class="buddy press" id="buddy" data-a="buddy" data-mood="${mood}" aria-label="Samer looks ${BU.MOOD_NAMES[mood]}. Tap him.">${BU.buddySvg(buddyProps(mood))}</button>`;
 }
 let buddyTimer = null;
 function buddyEvent(mood) {
@@ -171,13 +184,13 @@ function buddyEvent(mood) {
   clearTimeout(buddyTimer);
   buddyTimer = setTimeout(() => { ui.buddyEv = null; refreshBuddy(false); }, 9200);
 }
-function refreshBuddy(poke) {
+function refreshBuddy(poke, say) {
   const b = document.getElementById('buddy'); if (!b || ui.view !== 'today') return;
   const d = S.peekDay(ui.date), plan = S.plan(), isToday = ui.date === S.todayKey();
   const mood = buddyMood(d, plan, isToday);
-  if (mood !== b.dataset.mood) { b.innerHTML = BU.buddySvg(buddyProps(mood)); b.dataset.mood = mood; b.setAttribute('aria-label', 'Your little man looks ' + BU.MOOD_NAMES[mood] + '. Tap him.'); }
+  if (mood !== b.dataset.mood) { b.innerHTML = BU.buddySvg(buddyProps(mood)); b.dataset.mood = mood; b.setAttribute('aria-label', 'Samer looks ' + BU.MOOD_NAMES[mood] + '. Tap him.'); }
   const bub = document.getElementById('bubble');
-  if (bub) { bub.textContent = BU.lineFor(mood, ui.buddySeed + parseInt(ui.date.slice(-2), 10)); bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop'); }
+  if (bub) { bub.textContent = say || BU.lineFor(mood, ui.buddySeed + parseInt(ui.date.slice(-2), 10)); bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop'); }
   if (poke) { b.classList.remove('poke'); void b.offsetWidth; b.classList.add('poke'); }
 }
 
@@ -195,8 +208,10 @@ VIEWS.today = () => {
   const wk = weekKeys(k);
   const streak = S.streak();
   const buddyLine = buddyOn() ? BU.lineFor(buddyMood(d, plan, isToday), ui.buddySeed + parseInt(k.slice(-2), 10)) : '';
-  const bar = (nm, cur, tgt, col) => `<div class="bar"><span class="nm">${nm}</span><div class="tr"><div class="fl" data-w="${clamp(cur / tgt * 100, 0, 100).toFixed(1)}%" style="width:${ui.barsPrev[nm] || '0%'};background:${cur > tgt * 1.05 && nm !== 'Protein' && nm !== 'Fibre' ? 'var(--over)' : col}"></div></div><span class="vl">${fmt(cur)} / ${tgt}g</span></div>`;
-  const cups = Array.from({ length: p.waterGoal || 8 }, (_, i) => `<button type="button" class="cup ${i < d.water ? 'on' : ''}" data-a="cup" data-i="${i}" aria-label="Cup ${i + 1}${i < d.water ? ', drunk' : ''}">${cupSvg(i < d.water)}</button>`).join('');
+  const HEX = { 'var(--prot)': '#6366F1', 'var(--carb)': '#F97316', 'var(--fat)': '#EAB308', 'var(--fib)': '#10B981', 'var(--over)': '#DC2626' };
+  const bar = (nm, cur, tgt, col) => { const c = cur > tgt * 1.05 && nm !== 'Protein' && nm !== 'Fibre' ? 'var(--over)' : col, w = clamp(cur / tgt * 100, 0, 100).toFixed(1) + '%', grow = ui.barsPrev[nm] !== w;
+    return `<div class="bar"><span class="nm">${nm}</span><div class="tr"><div class="fl ${grow ? 'grow' : ''}" style="width:${w};background-color:${HEX[c]};background-color:${c}"></div></div><span class="vl">${fmt(cur)} / ${tgt}g</span></div>`; };
+  const cups = Array.from({ length: p.waterGoal || 8 }, (_, i) => `<button type="button" class="cup ${i < d.water ? 'on' : ''}" data-a="cup" data-i="${i}" aria-label="Cup ${i + 1}${i < d.water ? ', drunk' : ''}">${cupSvg(i < d.water, i)}</button>`).join('');
   const mealsHtml = S.meals().map(m => {
     const es = d.entries.filter(e => e.meal === m);
     const kc = es.reduce((s, e) => s + e.n.kcal, 0);
@@ -244,7 +259,7 @@ afterRender.today = (anim) => {
     if (r) { r.style.strokeDashoffset = r.dataset.off; ui.ringPrev = r.dataset.off; }
     const r2 = document.getElementById('ring2');
     if (r2) { r2.style.strokeDashoffset = r2.dataset.off; ui.ring2Prev = r2.dataset.off; } else ui.ring2Prev = null;
-    document.querySelectorAll('.bar .fl').forEach(el => { el.style.width = el.dataset.w; ui.barsPrev[el.parentNode.previousElementSibling.textContent] = el.dataset.w; });
+    document.querySelectorAll('.bar .fl').forEach(el => { ui.barsPrev[el.parentNode.previousElementSibling.textContent] = el.style.width; });
   }));
   if (anim) {
     const n = document.querySelector('.ringtext .n[data-count]');
@@ -268,6 +283,7 @@ const DONE_LINES = ['Logged and locked in.', 'Another one for the streak.', 'Day
 /* ================= FOOD SEARCH ================= */
 function srcBadge(f) { const s = F.SRC[f.src] || F.SRC.off; return `<span class="badge" style="background:${s.bg};color:${s.fg}">${s.label}</span>`; }
 function resRow(f, list) {
+  f = withEdits(f);
   if (f.recipe && !ui.multi && !ui.pick) return `<div class="swipe rsw"><div class="swipe-acts"><button type="button" class="sw-edit" data-a="editrecipe" data-id="${esc(f.id)}" tabindex="-1">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>', { s: 18, c: '#fff' })}Edit</button><button type="button" class="sw-del" data-a="delrecipe" data-id="${esc(f.id)}" tabindex="-1">${I.trash({ s: 18, c: '#fff' })}Delete</button></div>${resRowInner(f, list)}</div>`;
   return resRowInner(f, list);
 }
@@ -384,13 +400,50 @@ async function runOnline(q) {
 }
 
 function findListed(id, list) {
-  if (list === 'online') return ui.online.items.find(f => f.id === id);
-  if (list === 'cnf') return ui.online.cnf.find(f => f.id === id);
+  if (list === 'online') return withEdits(ui.online.items.find(f => f.id === id));
+  if (list === 'cnf') return withEdits(ui.online.cnf.find(f => f.id === id));
   return S.state.foods[id] || F.BASICS.find(f => f.id === id);
+}
+// If you corrected a food's numbers, your version wins everywhere.
+function withEdits(f) { const s = f && S.state.foods[f.id]; return s && s.edited ? Object.assign({}, f, s, { partial: false }) : f; }
+const cleanFood = f => { const c = { id: f.id, name: f.name, brand: f.brand || '', src: f.src, liquid: !!f.liquid, per: f.per, units: f.units, code: f.code, cat: f.cat }; if (f.recipe) c.recipeId = f.id; return c; };
+
+/* ---------- correcting a food's numbers ---------- */
+function openEditFood() {
+  const f = sheet.food, back = sheet;
+  const u0 = f.units && f.units[0], serving = u0 && !F.isMeasure(u0);
+  const size = serving ? u0.g : 100, k = size / 100, r1 = v => Math.round((v || 0) * k * 10) / 10;
+  sheet = { type: 'create', anim: false, code: f.code || null, name: f.name, brand: f.brand || '', cat: f.cat || null, showBrand: !!f.brand,
+    serving: serving ? u0.short : 'serving', basis: serving ? 'serving' : (f.liquid ? '100ml' : '100'), sunit: f.liquid ? 'ml' : 'g', basisOpen: true,
+    v: { size: Math.round(size * 10) / 10, kcal: Math.round((f.per.kcal || 0) * k), p: r1(f.per.p), c: r1(f.per.c), f: r1(f.per.f), fib: r1(f.per.fib), sug: r1(f.per.sug), sat: r1(f.per.sat), na: Math.round((f.per.salt || 0) * 400 * k) },
+    editing: { food: f, back } };
+  pad = null; renderOverlay(true);
+}
+function saveEdited() {
+  const s = sheet, orig = s.editing.food, back = s.editing.back;
+  const size = s.basis === 'serving' ? (s.v.size || 100) : 100, per = {};
+  ['kcal', 'p', 'c', 'f', 'fib', 'sug', 'sat'].forEach(k => { per[k] = (s.v[k] || 0) * 100 / size; });
+  per.salt = (s.v.na || 0) / 400 * 100 / size;
+  const liq = cfLiquid(), U = liq ? 'ml' : 'g';
+  const old0 = orig.units && orig.units[0], oldServing = old0 && !F.isMeasure(old0);
+  let units = (orig.units || []).filter((u, i) => !(i === 0 && oldServing) && !F.isMeasure(u));
+  if (s.basis === 'serving') units.unshift({ label: (s.serving || 'serving') + ' (' + g1(size) + ' ' + U + ')', short: s.serving || 'serving', g: size });
+  units = units.concat(liq ? [{ label: 'Millilitres', short: 'ml', g: 1 }, { label: 'Fluid ounces', short: 'fl oz', g: 29.57 }] : [{ label: 'Grams', short: 'g', g: 1 }, { label: 'Ounces', short: 'oz', g: 28.35 }]);
+  const food = Object.assign({}, orig, { name: s.name.trim() || orig.name, brand: s.brand.trim(), per, units, cat: s.cat || orig.cat, liquid: liq || undefined, edited: true, partial: false });
+  delete food._uk;
+  const prev = S.state.foods[food.id];
+  S.state.foods[food.id] = Object.assign({}, prev || {}, food, { used: (prev && prev.used) || 0 }, prev && prev.recipe ? { recipe: prev.recipe } : {});
+  S.save();
+  const fresh = back.mode === 'edit' || back.mode === 'ingedit' || back.mode === 'seledit' ? food : F.withUnits(food, favUnits());
+  sheet = Object.assign({}, back, { food: fresh, unit: back.unit < fresh.units.length ? back.unit : 0, foodEdited: true, anim: false });
+  if (sheet.unit === 0 && F.isMeasure(fresh.units[0]) !== F.isMeasure(back.food.units[back.unit] || {})) sheet.amt = F.startAmt(fresh.units[0]);
+  pad = null; renderOverlay(true);
+  toast('Numbers corrected', 'Your version is used from now on' + (back.mode === 'edit' ? ' · tap Save changes to fix this entry too' : '') + '.', 'good');
 }
 
 /* ================= FOOD SHEET ================= */
 function openFoodSheet(food, opts = {}) {
+  food = withEdits(food);
   if (!opts.mode || opts.mode === 'add' || opts.mode === 'ingadd') { if (!food.partial) food = F.withUnits(food, favUnits()); }
   if (opts.sel && !opts.mode) opts.mode = 'seladd';
   const u0 = food.units && food.units[0];
@@ -432,6 +485,7 @@ function foodSheetHtml() {
       <span class="small muted">${hint}</span></div>
     ${padOn ? `<div class="row small" style="justify-content:space-between;background:var(--bg);border-radius:12px;padding:8px 12px;font-weight:700;color:var(--chip-ink)"><span>P ${g1(n.p)} g</span><span>C ${g1(n.c)} g</span><span>F ${g1(n.f)} g</span><span>Fibre ${g1(n.fib)} g</span></div>` : `
     <div class="nutgrid">${[['Protein', n.p], ['Carbs', n.c], ['Fat', n.f], ['Fibre', n.fib], ['Sugar', n.sug], ['Sat fat', n.sat]].map(([l, v]) => `<div><span>${l}</span><span>${g1(v)} g</span></div>`).join('')}<div><span>Sodium</span><span>${fmt(naMg(n.salt))} mg</span></div><div><span>Weight</span><span>${fmt(grams)} ${f.liquid ? 'ml' : 'g'}</span></div></div>
+    ${f.recipe || f.src === 'recipe' ? '' : `<button type="button" class="fixlink" data-a="editfood">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>', { s: 14, w: 2.4 })}${f.edited ? 'You corrected these numbers · edit again' : 'Numbers look wrong? Fix them'}</button>`}
     ${(() => { const r = mode === 'add' || mode === 'edit' ? T.ratingFor(f) : null; return r && r.verdict !== 'mixed' && !padOn ? `<div style="border-radius:14px;padding:10px 12px;font-size:13px;font-weight:700;background:${r.verdict === 'good' ? 'var(--accent-soft)' : 'var(--over-soft)'};color:${r.verdict === 'good' ? 'var(--accent-ink)' : 'var(--over-ink)'}">${esc(r.note)}</div>` : ''; })()}
     ${rec && mode === 'add' ? `<div class="row" style="background:var(--warm-bg);border-radius:14px;padding:10px 12px"><span class="grow small" style="font-size:13px;color:var(--warm-ink2)">${rec.ings.length} ingredients · makes ${rec.portions} portion${rec.portions > 1 ? 's' : ''}${rec.cookedG ? ' · pot weighed ' + fmt(rec.cookedG) + ' g' : ''}</span><button type="button" class="pill" data-a="editrecipe" data-id="${esc(f.id)}" style="background:var(--warm-chip);color:var(--warm-ink)">Edit recipe</button></div>` : ''}
     ${ing ? '' : `<div class="row" style="gap:6px;flex-wrap:wrap">${S.meals().map(m => `<button type="button" class="pill unit ${m === sheet.meal ? 'on' : ''}" data-a="smeal" data-m="${esc(m)}" style="flex:1">${esc(m)}</button>`).join('')}</div>`}
@@ -462,7 +516,7 @@ function addFoodNow() {
   const d = S.day(ui.date);
   d.entries.push({ id: S.uid(), meal: sheet.meal, food: clean, amt: sheet.amt, unit: sheet.unit, grams, n, t: Date.now() });
   S.save();
-  if (sheet.mode !== 'edit') buddyEvent(BU.reactTo([clean]));
+  if (sheet.mode !== 'edit') buddyEvent(BU.reactTo([clean], n.kcal));
   const meal = sheet.meal;
   closeSheet(true);
   ui.view = 'today'; render(); window.scrollTo(0, 0);
@@ -491,7 +545,8 @@ function createSheetHtml() {
     <div class="row" style="gap:12px;align-items:center"><button type="button" class="cf-tile press" data-a="cficons" id="cftile" aria-label="Change the icon">${F.foodTile(cfFood(), 52)}</button>
       <div class="grow" style="min-width:0"><input class="cf-name" data-in="cfname" value="${esc(s.name)}" placeholder="Name, e.g. Mum's flapjack" autocomplete="off" aria-label="Food name">
         ${s.showBrand || s.brand ? `<input class="cf-brand" data-in="cfbrand" value="${esc(s.brand)}" placeholder="Brand, e.g. Tesco" autocomplete="off" aria-label="Brand">` : `<button type="button" class="cf-addbrand" data-a="cfbrandon">+ add a brand</button>`}</div>
-      <button type="button" class="iconbtn" data-a="close" aria-label="Close" style="align-self:flex-start">${I.x({ s: 18 })}</button></div>
+      <button type="button" class="iconbtn" data-a="${s.editing ? 'cfcancel' : 'close'}" aria-label="${s.editing ? 'Back' : 'Close'}" style="align-self:flex-start">${s.editing ? I.back({ s: 18, w: 2.4 }) : I.x({ s: 18 })}</button></div>
+    ${s.editing ? `<div class="fixnote">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>', { s: 15, w: 2.4 })}<span>Correcting the numbers. Your version is used every time you log this food from now on.</span></div>` : ''}
     ${s.code ? `<div class="small muted" style="font-weight:600;margin-top:-4px">Barcode ${esc(s.code)} · next time it'll scan straight in</div>` : ''}
     <div class="cf-icons" role="group" aria-label="Pick an icon">${CF_ICONS.map(c => `<button type="button" class="press ${F.catOf(cfFood()) === c ? 'on' : ''}" data-a="cfcat" data-v="${c}" aria-label="${c} icon">${F.foodTile({ name: 'x', cat: c }, 34)}</button>`).join('')}</div>
     <div class="nlabel">
@@ -504,7 +559,7 @@ function createSheetHtml() {
       ${row('f', 'Fat', true)}${row('sat', 'of which saturates', false, true)}${row('c', 'Carbohydrate', true)}${row('sug', 'of which sugars', false, true)}${row('fib', 'Fibre', true)}${row('p', 'Protein', true)}${row('na', 'Sodium', true)}
     </div>
     <span class="small muted" style="text-align:center">Copy the numbers straight from the packet · leave anything you don't know at 0</span>
-    <button type="button" class="btn press" data-a="cfsave" ${s.name.trim() ? '' : 'disabled'}>Save &amp; log it</button>
+    <button type="button" class="btn press" data-a="cfsave" ${s.name.trim() ? '' : 'disabled'}>${s.editing ? 'Save corrected numbers' : 'Save &amp; log it'}</button>
   </div>`;
 }
 function saveCreated() {
@@ -626,7 +681,9 @@ VIEWS.setup = () => {
     <label class="field"><span class="label">Your first name</span><input class="input" data-in="suname" value="${esc(su.name)}" placeholder="e.g. Sam" autocomplete="given-name"></label>
     <div class="field"><span class="label">Where do you buy food?</span><div class="row" style="gap:8px">${opt('country', 'UK', 'United Kingdom', 'UK products first', 'style="flex:1"')}${opt('country', 'CA', 'Canada', 'Canadian products first', 'style="flex:1"')}</div></div>
     <div class="field"><span class="label">Units</span><div class="row" style="gap:8px">${opt('units', 'metric', 'kg & cm', 'Metric', 'style="flex:1"')}${opt('units', 'uk', 'st, lb & ft', 'UK style', 'style="flex:1"')}${opt('units', 'us', 'lb & ft', 'Canada style', 'style="flex:1"')}</div>
-      <span class="small muted">You can change all of this later in Me.</span></div>`;
+      <span class="small muted">You can change all of this later in Me.</span></div>
+    ${su.editing ? '' : `<div class="restorecard"><div class="grow"><div style="font-weight:800">Used Samslimmer before?</div><div class="small muted">Bring back your log, foods and recipes from a backup file and skip all this.</div></div>
+      <button type="button" class="btn outline press" data-a="restore" style="width:auto;padding:0 16px;height:44px;font-size:14px;flex:none">${svg('<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>', { s: 16, w: 2.4 })}Restore</button></div>`}`;
   if (st === 1) body = `
     <div class="field"><span class="label">Sex <span class="muted" style="font-weight:600">(only used in the calorie formula)</span></span><div class="row" style="gap:8px">${opt('sex', 'm', 'Male', '', 'style="flex:1;text-align:center"')}${opt('sex', 'f', 'Female', '', 'style="flex:1;text-align:center"')}</div></div>
     <div class="field"><span class="label">Birthday</span><div class="row dobrow" style="gap:8px">${suBox('b_d', B)}${suBox('b_m', B)}${suBox('b_y', B)}</div><span class="small muted" id="agehint">${su.dob ? 'You\'re ' + S.ageOf(su.dob) + '. Your plan updates itself on your birthday.' : 'Day, month and year — used to work out your age.'}</span></div>
@@ -760,6 +817,7 @@ VIEWS.recipe = () => {
 afterRender.recipe = () => { if (pad) { if (!pad.shownSetup) { const el = document.getElementById(pad.id); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } pad.shownSetup = true; } };
 
 function saveRecipe(andLog) {
+  buddyEvent('chef');
   const r = ui.recipe;
   if (!r.name.trim()) { toast('Give your recipe a name'); const el = document.querySelector('[data-in="rname"]'); if (el) el.focus(); return; }
   if (!r.ings.length) return;
@@ -863,8 +921,8 @@ VIEWS.me = () => {
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Appearance</div>
         <div class="row" style="gap:6px">${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button type="button" class="pill unit ${(S.state.settings.theme || 'auto') === k ? 'on' : ''}" data-a="theme" data-v="${k}" style="flex:1">${l}</button>`).join('')}</div>
         <div class="small muted">Auto follows your phone's light or dark setting.</div></div>
-      <div class="card rise" style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${S.state.profile ? `<div class="buddyprev" aria-hidden="true">${BU.buddySvg(buddyProps('happy', 76))}</div>` : ''}<div class="grow"><div class="h2">Your little man</div><div class="small muted">Lives in the top bar. His shape follows your height and weigh-ins; his mood follows how healthy today's choices are.</div></div></div>
-        <div class="row"><span class="grow small" style="font-size:14px">Show on Today</span><button type="button" class="switch ${S.state.settings.buddy !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.buddy !== false}" aria-label="Show the little man" data-a="buddyset" data-k="buddy"></button></div>
+      <div class="card rise" style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${S.state.profile ? `<div class="buddyprev" aria-hidden="true">${BU.buddySvg(buddyProps('happy', 76))}</div>` : ''}<div class="grow"><div class="h2">Samer</div><div class="small muted">Your little man in the top bar. Tap him for a line, poke him three times if you dare. His shape follows your height and weigh-ins; his mood follows how healthy today's choices are.</div></div></div>
+        <div class="row"><span class="grow small" style="font-size:14px">Show on Today</span><button type="button" class="switch ${S.state.settings.buddy !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.buddy !== false}" aria-label="Show Samer" data-a="buddyset" data-k="buddy"></button></div>
         ${S.state.profile && S.state.profile.sex !== 'f' ? `<div class="row"><span class="grow small" style="font-size:14px">Moustache</span><button type="button" class="switch ${S.state.settings.tache !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.tache !== false}" aria-label="Moustache" data-a="buddyset" data-k="tache"></button></div>` : ''}
         <div class="row"><span class="grow small" style="font-size:14px">Shirt</span><div class="row" style="gap:8px">${[['#C8553D', 'Brick red'], ['#2E8A82', 'Teal'], ['#3B5BA9', 'Blue'], ['#E0A43A', 'Mustard']].map(([c, l]) => `<button type="button" class="swatch press ${(S.state.settings.shirt || '#C8553D') === c ? 'on' : ''}" style="background:${c}" data-a="buddyset" data-k="shirt" data-v="${c}" aria-label="${l} shirt" aria-pressed="${(S.state.settings.shirt || '#C8553D') === c}"></button>`).join('')}</div></div></div>
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Food search country</div><div class="row" style="gap:6px">${opt('country', 'UK', 'United Kingdom')}${opt('country', 'CA', 'Canada')}</div>
@@ -884,7 +942,6 @@ VIEWS.me = () => {
         <button type="button" class="btn press" data-a="backup">${svg('<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>', { s: 18, c: '#fff', w: 2.4 })}Save a backup file</button>
         <div class="row"><span class="grow small" style="font-size:14px">Back up when I tap “Done”<div class="muted" style="font-size:12px">${IOS ? 'Opens the Save sheet once a day' : 'Saves a file to Downloads once a day'}, and reminds you in the evening if you forget.</div></span><button type="button" class="switch ${S.state.settings.autoBackup !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.autoBackup !== false}" aria-label="Back up when I tap Done" data-a="autobk"></button></div>
         <button type="button" class="btn outline press" data-a="restore">${svg('<path d="M12 21V9M7 14l5-5 5 5M5 3h14"/>', { s: 18, w: 2.4 })}Restore from a backup</button>
-        <input type="file" id="restorefile" accept="application/json,.json" hidden>
         <button type="button" class="btn danger press" data-a="reset" style="margin-top:6px">Delete everything and start again</button></div>
       <div class="attrib" style="text-align:center">Samslimmer 1.0</div>
     </div>${nav('me')}</div>`;
@@ -936,7 +993,8 @@ function calorieCard(keys, plan) {
 function macroCard(plan) {
   const ds = ui.dash, today = S.todayKey();
   const week = Array.from({ length: 7 }, (_, i) => S.addDays(today, i - 6));
-  const mday = ds.mday && week.indexOf(ds.mday) >= 0 ? ds.mday : today;
+  const lastLogged = week.slice().reverse().find(k => S.peekDay(k).entries.length);
+  const mday = ds.mday && week.indexOf(ds.mday) >= 0 ? ds.mday : (S.peekDay(today).entries.length ? today : lastLogged || today);
   const tots = week.map(k => S.totals(S.peekDay(k).entries));
   const MAXK = Math.max(plan.kcal, ...tots.map(t => t.p * 4 + t.c * 4 + t.f * 9)), WH = 116;
   const t = S.totals(S.peekDay(mday).entries);
@@ -1418,7 +1476,7 @@ function addAllSelected() {
   S.save();
   ui.sel = []; ui.multi = false; closeSheet(true);
   if (pick) { ui.pick = null; ui.view = 'recipe'; render(); toast(n + ' ingredients added', fmt(kcal) + ' kcal', 'good'); return; }
-  buddyEvent(BU.reactTo(ui.lastAdded || []));
+  buddyEvent(BU.reactTo(ui.lastAdded || [], kcal));
   ui.view = 'today'; render(); window.scrollTo(0, 0);
   if (navigator.vibrate) navigator.vibrate(10);
   toast(n + ' foods added to ' + meal, fmt(kcal) + ' kcal', 'good');
@@ -1461,12 +1519,13 @@ const A = {
     const p = S.state.profile;
     document.querySelectorAll('.cup').forEach((c, j) => {
       const on = j < day.water;
-      if (on !== (j < before)) { c.innerHTML = cupSvg(on); c.classList.toggle('on', on); c.setAttribute('aria-label', 'Cup ' + (j + 1) + (on ? ', drunk' : '')); }
+      if (on !== (j < before)) { c.innerHTML = cupSvg(on, j, on); c.classList.toggle('on', on); c.setAttribute('aria-label', 'Cup ' + (j + 1) + (on ? ', drunk' : '')); }
     });
     el.classList.remove('popnow'); void el.offsetWidth; el.classList.add('popnow');
+    if (day.water > before && !matchMedia('(prefers-reduced-motion: reduce)').matches) { const sp = document.createElement('span'); sp.className = 'splash'; sp.innerHTML = '<i></i><i></i><i></i><i></i><i></i>'; el.appendChild(sp); setTimeout(() => sp.remove(), 700); }
     const lbl = document.getElementById('waterlbl');
     if (lbl) lbl.textContent = day.water + ' of ' + (p.waterGoal || 8) + ' cups · ' + ((day.water * (p.cupMl || 250)) / 1000).toFixed(2).replace(/0$/, '') + ' L';
-    if (day.water > before) buddyEvent('splash');
+    if (day.water > before) buddyEvent(day.water === (p.waterGoal || 8) ? 'dance' : 'splash');
     refreshBuddy(day.water > before);
     const goal = S.state.profile.waterGoal || 8;
     celebrate(day.water === goal ? 3100 : 300);
@@ -1496,7 +1555,12 @@ const A = {
     if (i >= 0) { if (cur.length === 1) { toast('Keep at least one favourite'); return; } cur.splice(i, 1); } else cur.push(d.v);
     S.state.settings.favUnits = F.ALL_UNITS.map(x => x[0]).filter(k => cur.indexOf(k) >= 0); S.save(); render();
   },
-  buddy: () => { ui.buddySeed++; if (navigator.vibrate) navigator.vibrate(8); refreshBuddy(true); },
+  buddy: () => {
+    const now = Date.now(); ui.pokes = (ui.pokes || []).filter(t => now - t < 1600).concat(now);
+    if (navigator.vibrate) navigator.vibrate(8);
+    if (ui.pokes.length >= 3) { ui.pokes = []; buddyEvent('shock'); refreshBuddy(true, BU.POKE[Math.floor(Math.random() * BU.POKE.length)]); return; }
+    ui.buddySeed++; refreshBuddy(true);
+  },
   buddyset: d => { const st = S.state.settings; if (d.k === 'shirt') st.shirt = d.v; else st[d.k] = st[d.k] === false; S.save(); render(); },
   themeflip: () => { S.state.settings.theme = isDark() ? 'light' : 'dark'; S.save(); applyTheme(); render(); },
   backup: () => exportBackup(),
@@ -1549,7 +1613,7 @@ const A = {
     const i = ui.sel.findIndex(x => x.food.id === f.id);
     if (i >= 0) { ui.sel.splice(i, 1); refreshMulti(f.id, false); return; }
     if (ui.pick && ui.recipe && f.id === ui.recipe.id) { toast('A recipe can\'t include itself'); return; }
-    const add = food => { food = F.withUnits(food, favUnits()); const u0 = food.units[0]; ui.sel.push({ food, unit: 0, amt: F.startAmt(u0) }); ui.lastPicked = f.id; refreshMulti(f.id, true); ui.lastPicked = null; if (navigator.vibrate) navigator.vibrate(6); };
+    const add = food => { food = F.withUnits(withEdits(food), favUnits()); const u0 = food.units[0]; ui.sel.push({ food, unit: 0, amt: F.startAmt(u0) }); ui.lastPicked = f.id; refreshMulti(f.id, true); ui.lastPicked = null; if (navigator.vibrate) navigator.vibrate(6); };
     if (f.partial) F.cnfDetails(f).then(add).catch(() => toast('Couldn\'t load that food', 'Health Canada\'s database didn\'t answer.'));
     else add(f);
   },
@@ -1618,7 +1682,7 @@ const A = {
   addfood: () => addFoodNow(),
   saveentry: () => {
     const day = S.day(ui.date), e = day.entries.find(x => x.id === sheet.entryId);
-    if (e) { const { grams, n } = sheetNumbers(); Object.assign(e, { amt: sheet.amt, unit: sheet.unit, grams, n, meal: sheet.meal }); S.save(); }
+    if (e) { const { grams, n } = sheetNumbers(); Object.assign(e, { amt: sheet.amt, unit: sheet.unit, grams, n, meal: sheet.meal }); if (sheet.foodEdited) e.food = cleanFood(sheet.food); S.save(); }
     closeSheet(); render(); toast('Updated');
   },
   delentry: () => {
@@ -1647,7 +1711,9 @@ const A = {
   cfbrandon: () => { sheet.showBrand = true; renderOverlay(true); const el = document.querySelector('[data-in="cfbrand"]'); if (el) el.focus(); },
   cficons: () => { const r = document.querySelector('.cf-icons'); if (r) { r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); } },
   cfcat: d => { sheet.cat = d.v; renderOverlay(true); },
-  cfsave: () => { pad = null; saveCreated(); },
+  cfsave: () => { pad = null; if (sheet.editing) saveEdited(); else saveCreated(); },
+  editfood: () => openEditFood(),
+  cfcancel: () => { const b = sheet.editing && sheet.editing.back; pad = null; if (b) { sheet = Object.assign({}, b, { anim: false }); renderOverlay(true); } else closeSheet(); },
   // setup
   suset: d => { const su = ui.su; const v = d.v; su[d.f] = (d.f === 'act' || d.f === 'pace') ? +v : v; if (d.f === 'country' && v === 'CA' && su.units === 'uk') su.units = 'us'; pad = null; render(); },
   supad: d => {
@@ -1745,6 +1811,7 @@ setInterval(() => { const t = S.todayKey(); if (t !== lastToday) { if (ui.date =
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { const t = S.todayKey(); if (t !== lastToday) { if (ui.date === lastToday) ui.date = t; lastToday = t; if (!sheet) render(); } } });
 
 /* ================= START ================= */
+(() => { const f = document.createElement('input'); f.type = 'file'; f.id = 'restorefile'; f.accept = 'application/json,.json'; f.hidden = true; document.body.appendChild(f); })();
 applyTheme();
 if (!S.state.profile) startSetup();
 else T.newMilestones();
