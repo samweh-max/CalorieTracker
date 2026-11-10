@@ -221,10 +221,17 @@ function buddyHtml(d, plan, isToday) {
   return `<button type="button" class="buddy press" id="buddy" data-a="buddy" data-mood="${mood}" aria-label="${buddyName()} looks ${BU.MOOD_NAMES[mood]}. Tap ${S.state.profile.sex === 'f' ? 'her' : 'him'}.">${BU.buddySvg(buddyProps(mood))}</button>`;
 }
 let buddyTimer = null;
-function buddyEvent(mood) {
-  ui.buddyEv = { mood, t: Date.now() }; ui.buddySeed++;
+function buddyEvent(mood, dur) {
+  dur = dur || 9000;
+  ui.buddyEv = { mood, t: Date.now(), dur }; ui.buddySeed++;
   clearTimeout(buddyTimer);
-  buddyTimer = setTimeout(() => { ui.buddyEv = null; refreshBuddy(false); }, 9200);
+  buddyTimer = setTimeout(() => { ui.buddyEv = null; refreshBuddy(false); }, dur + 200);
+}
+// The facts Little Samer talks about.
+function buddyCtx(d, plan, isToday) {
+  const p = S.state.profile;
+  return { t: S.totals(d.entries), plan, entries: d.entries, water: d.water || 0, goal: p.waterGoal || 8, isToday, done: !!d.done, streak: S.streak(),
+    event: !!(ui.buddyEv && Date.now() - ui.buddyEv.t < 1500) };
 }
 function refreshBuddy(poke, say) {
   const b = document.getElementById('buddy'); if (!b || ui.view !== 'today') return;
@@ -232,7 +239,7 @@ function refreshBuddy(poke, say) {
   const mood = buddyMood(d, plan, isToday);
   if (mood !== b.dataset.mood) { b.innerHTML = BU.buddySvg(buddyProps(mood)); b.dataset.mood = mood; b.setAttribute('aria-label', buddyName() + ' looks ' + BU.MOOD_NAMES[mood] + '. Tap ' + (S.state.profile.sex === 'f' ? 'her' : 'him') + '.'); }
   const bub = document.getElementById('bubble');
-  if (bub) { bub.textContent = say || BU.lineFor(mood, ui.buddySeed + parseInt(ui.date.slice(-2), 10), S.state.profile.sex); bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop'); }
+  if (bub) { bub.textContent = say || BU.lineFor(mood, ui.buddySeed + parseInt(ui.date.slice(-2), 10), S.state.profile.sex, buddyCtx(d, plan, isToday)); bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop'); }
   if (poke) { b.classList.remove('poke'); void b.offsetWidth; b.classList.add('poke'); }
 }
 
@@ -249,7 +256,7 @@ VIEWS.today = () => {
   const greet = (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (p.name ? ', ' + esc(p.name) : '');
   const wk = weekKeys(k);
   const streak = S.streak();
-  const buddyLine = buddyOn() ? BU.lineFor(buddyMood(d, plan, isToday), ui.buddySeed + parseInt(k.slice(-2), 10), S.state.profile.sex) : '';
+  const buddyLine = buddyOn() ? BU.lineFor(buddyMood(d, plan, isToday), ui.buddySeed + parseInt(k.slice(-2), 10), S.state.profile.sex, buddyCtx(d, plan, isToday)) : '';
   const HEX = { 'var(--prot)': '#6366F1', 'var(--carb)': '#F97316', 'var(--fat)': '#EAB308', 'var(--fib)': '#10B981', 'var(--over)': '#DC2626' };
   const bar = (nm, cur, tgt, col) => { const c = cur > tgt * 1.05 && nm !== 'Protein' && nm !== 'Fibre' ? 'var(--over)' : col, w = clamp(cur / tgt * 100, 0, 100).toFixed(1) + '%', grow = ui.barsPrev[nm] !== w;
     return `<div class="bar"><span class="nm">${nm}</span><div class="tr"><div class="fl ${grow ? 'grow' : ''}" style="width:${w};background-color:${HEX[c]};background-color:${c}"></div></div><span class="vl">${fmt(cur)} / ${tgt}g</span></div>`; };
@@ -1629,9 +1636,14 @@ const A = {
     S.state.settings.favUnits = F.ALL_UNITS.map(x => x[0]).filter(k => cur.indexOf(k) >= 0); S.save(); render();
   },
   buddy: () => {
-    const now = Date.now(); ui.pokes = (ui.pokes || []).filter(t => now - t < 1600).concat(now);
+    const now = Date.now(), pick = l => { let x; do { x = l[Math.floor(Math.random() * l.length)]; } while (x === ui.lastPoke && l.length > 1); ui.lastPoke = x; return x; }, f = S.state.profile.sex === 'f';
+    const say = x => f ? x.replace('My moustache is shaking', 'My earrings are shaking') : x;
     if (navigator.vibrate) navigator.vibrate(8);
-    if (ui.pokes.length >= 3) { ui.pokes = []; buddyEvent('shock'); refreshBuddy(true, BU.POKE[Math.floor(Math.random() * BU.POKE.length)]); return; }
+    if (ui.sulkUntil && now < ui.sulkUntil) { ui.sulkUntil = now + 6000; buddyEvent('angry', 6000); refreshBuddy(true, pick(BU.SULK)); return; }
+    ui.pokes = (ui.pokes || []).filter(t => now - t < 7000).concat(now);
+    const n = ui.pokes.length;
+    if (n >= 7) { ui.pokes = []; ui.sulkUntil = now + 12000; buddyEvent('angry', 12000); refreshBuddy(true, say(pick(BU.ANGRY))); if (navigator.vibrate) navigator.vibrate([30, 40, 30]); return; }
+    if (n >= 4) { buddyEvent('shock', 3500); refreshBuddy(true, say(pick(BU.ANNOYED))); return; }
     ui.buddySeed++; refreshBuddy(true);
   },
   buddyset: d => { const st = S.state.settings; if (d.k === 'shirt') st.shirt = d.v; else st[d.k] = st[d.k] === false; S.save(); render(); },

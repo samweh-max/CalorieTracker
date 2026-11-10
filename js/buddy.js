@@ -66,6 +66,7 @@ const TPL = `<svg width="{{w}}" height="{{h}}" aria-hidden="true" focusable="fal
 </g>
 <path d="{{lidsD}}" fill="#F3D2B3" class="k-inkf" opacity="{{lidsOp}}"></path>
 <path d="M50 51 l-4 -3 M53 48.6 l-2.4 -4 M74 50 l-3 -3.4 M77 47.8 l-1.6 -4" class="k-ink" style="stroke-width:2" opacity="{{lashOp}}"></path>
+<g opacity="{{angryOp}}"><ellipse cx="70" cy="64" rx="34" ry="34" fill="#E2483D" opacity=".28"></ellipse><path d="M96 34 l6 -2 -2 6 m4 -6 l2 6 -6 -2" class="k-ink" style="stroke:#C0272D;stroke-width:2.4"></path></g>
 <g opacity="{{heartEyesOp}}" class="{{heartEyesAnim}}"><path d="M58 54c-2.6-4.4-10-3.2-10 2.4 0 4.2 5.4 7.4 10 11.6 4.6-4.2 10-7.4 10-11.6 0-5.6-7.4-6.8-10-2.4z" fill="#E2483D" class="k-inkf"></path><path d="M82 53c-2.4-4-9-2.9-9 2.2 0 3.8 4.9 6.7 9 10.5 4.1-3.8 9-6.7 9-10.5 0-5.1-6.6-6.2-9-2.2z" fill="#E2483D" class="k-inkf"></path></g>
 <path d="{{spiralD}}" class="k-thin" opacity="{{spiralOp}}"></path>
 <path d="{{bagsD}}" class="k-thin" opacity="{{bagsOp}}"></path>
@@ -87,6 +88,7 @@ const TPL = `<svg width="{{w}}" height="{{h}}" aria-hidden="true" focusable="fal
 <g opacity="{{sweatOp}}"><path class="k-fly" d="M104 46c3 4 4 6 4 8a4 4 0 0 1-8 0c0-2 1-4 4-8z" fill="#7DB9E8" stroke="#1A1A1A" stroke-width="1.4"></path><path class="k-fly k-fly2" d="M36 44c3 4 4 6 4 8a4 4 0 0 1-8 0c0-2 1-4 4-8z" fill="#7DB9E8" stroke="#1A1A1A" stroke-width="1.4"></path></g>
 <g opacity="{{linesOp}}" class="k-lines" stroke="#1A1A1A" stroke-width="2.2" stroke-linecap="round"><path d="M18 60 h-10 M16 76 h-12 M18 92 h-10 M122 60 h10 M124 76 h12 M122 92 h10"></path></g>
 <g opacity="{{boingOp}}" class="k-lines" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round" fill="none"><path d="M112 70 q6 -4 12 0 M114 78 q6 -4 12 0 M112 86 q6 -4 12 0"></path></g>
+<g opacity="{{angryOp}}" fill="#F4F4F2" stroke="#1A1A1A" stroke-width="1.6"><path class="k-fl" d="M24 30 a6 6 0 0 1 8 -6 a7 7 0 0 1 12 2 a5 5 0 0 1 -2 9 h-16 a5 5 0 0 1 -2 -5 z"></path><path class="k-fl k-fl2" d="M100 22 a6 6 0 0 1 8 -6 a7 7 0 0 1 12 2 a5 5 0 0 1 -2 9 h-16 a5 5 0 0 1 -2 -5 z"></path></g>
 <g opacity="{{exclOp}}" style="font:900 22px Georgia,serif" fill="#E2483D" stroke="#1A1A1A" stroke-width="1.2"><text class="k-pop" x="108" y="30">!</text><text class="k-pop k-pop2" x="118" y="40">!</text><text class="k-pop k-pop3" x="22" y="34">?</text></g>
 <g opacity="{{notesOp}}" fill="#1A1A1A"><path class="k-fl" d="M112 40 v-16 l10 -3 v15 M112 40 a3.4 2.6 0 1 1 -0.1 0 M122 36 a3.4 2.6 0 1 1 -0.1 0" stroke="#1A1A1A" stroke-width="2" fill="#1A1A1A"></path><path class="k-fl k-fl2" d="M22 50 v-14 l2 0 q6 4 8 0 M22 50 a3.4 2.6 0 1 1 -0.1 0" stroke="#1A1A1A" stroke-width="2"></path><path class="k-fl k-fl3" d="M120 70 v-12 M120 70 a3 2.4 0 1 1 -0.1 0" stroke="#1A1A1A" stroke-width="2"></path></g>
 <g opacity="{{growlOp}}" style="font:900 11px Georgia,serif" fill="#1A1A1A"><text class="k-lines" x="98" y="142">grr</text><text class="k-lines" x="14" y="150">rrr</text><text class="k-fl" x="104" y="126" style="font-size:9px">rumble</text></g>
@@ -138,7 +140,7 @@ function vals(props) {
       limp: [arm(bx, shY, bx - 6, shY + 24, bx - 2, shY + 44), arm(fx, shY, fx + 6, shY + 24, fx + 2, shY + 44)],
       sweet: [arm(bx, shY, bx - 10 - wb * 0.3, shY + 20, bx - 6 - wb * 0.25, shY + 40), arm(fx, shY, fx + 22, shY, fx + 20, shY - 18)]
     };
-    var pose = { love: 'sweet', shock: 'up', dance: 'up', chef: 'wave', hungry: 'belly', neutral: 'down', happy: 'wave', proud: 'up', flex: 'flex', splash: 'cup', thirsty: 'brow', sugar: 'sweet', coma: 'belly', sad: 'limp', sleepy: 'limp' }[mood] || 'down';
+    var pose = { angry: 'down', love: 'sweet', shock: 'up', dance: 'up', chef: 'wave', hungry: 'belly', neutral: 'down', happy: 'wave', proud: 'up', flex: 'flex', splash: 'cup', thirsty: 'brow', sugar: 'sweet', coma: 'belly', sad: 'limp', sleepy: 'limp' }[mood] || 'down';
     var aB = A[pose][0], aF = A[pose][1];
     // ---------- head ----------
     var jw = 4 * w;
@@ -158,19 +160,21 @@ function vals(props) {
       hairStrands = 'M56 30 q6 -6 14 -4 M76 28 q8 -4 14 2';
     }
     // eyes, brows, mouth per mood
-    var look = { love: [0, 0], shock: [0, 0], dance: [0, -1], chef: [1, -1], hungry: [0, -3], neutral: [0, 0], happy: [1, -1], proud: [0, -2], flex: [2, 0], splash: [0, -2], thirsty: [0, 1], sugar: [0, 0], coma: [0, 2], sad: [0, 2], sleepy: [0, 2] }[mood] || [0, 0];
+    var look = { angry: [0, 1], love: [0, 0], shock: [0, 0], dance: [0, -1], chef: [1, -1], hungry: [0, -3], neutral: [0, 0], happy: [1, -1], proud: [0, -2], flex: [2, 0], splash: [0, -2], thirsty: [0, 1], sugar: [0, 0], coma: [0, 2], sad: [0, 2], sleepy: [0, 2] }[mood] || [0, 0];
     var eyeBig = mood === 'sugar' || mood === 'splash' || mood === 'proud' || mood === 'shock' || mood === 'hungry';
     var closed = mood === 'sleepy' || mood === 'coma' || mood === 'happy' || mood === 'proud' || mood === 'dance' || mood === 'chef' || mood === 'love';
     var lidsD = mood === 'coma' || mood === 'sleepy' ? 'M49 58 Q58 48 67 58 Q58 60 49 58 Z M75 57 Q82 48 89 57 Q82 59 75 57 Z'
         : mood === 'happy' || mood === 'proud' || mood === 'dance' || mood === 'chef' ? 'M49 59 Q58 50 67 59 Q58 54 49 59 Z M75 58 Q82 49 89 58 Q82 53 75 58 Z'
       : mood === 'thirsty' || mood === 'sad' ? 'M49 56 Q58 49 67 54 Q58 54 49 56 Z M75 54 Q82 49 89 56 Q82 54 75 54 Z' : '';
     var B = {
+      angry: 'M47 43 L66 50 M74 50 L93 43',
       love: 'M47 44 Q57 37 66 42 M75 41 Q83 36 91 41', shock: 'M46 35 Q57 27 66 34 M75 33 Q83 26 92 33', dance: 'M47 42 Q57 35 66 40 M75 39 Q83 34 91 39', chef: 'M47 42 Q57 36 66 41 M75 40 Q83 35 91 40', hungry: 'M48 44 Q57 41 66 44 M76 43 Q83 40 90 43',
       neutral: 'M48 46 Q57 41 66 45 M76 44 Q83 40 90 44', happy: 'M47 44 Q57 37 66 42 M75 41 Q83 36 91 41', proud: 'M47 42 Q57 35 66 40 M75 39 Q83 34 91 39',
       flex: 'M48 42 L66 47 M75 47 L91 41', splash: 'M47 41 Q57 34 66 40 M75 39 Q83 33 91 39', thirsty: 'M49 47 L65 43 M76 43 L90 47',
       sugar: 'M47 40 Q57 32 66 39 M75 38 Q83 31 91 38', coma: 'M48 48 Q57 46 66 48 M76 47 Q83 45 90 47', sad: 'M49 46 L65 41 M76 41 L90 46', sleepy: 'M48 48 Q57 46 66 48 M76 47 Q83 45 90 47'
     };
     var mouth = {
+      angry: ['M60 97 Q72 87 84 97', ''],
       love: ['M58 90 Q72 104 88 89 Q72 96 58 90 Z', 'M62 91 Q72 95 84 90'], shock: ['M66 95 a6 7 0 1 0 12 0 a6 7 0 1 0 -12 0 Z', ''], dance: ['M56 89 Q72 108 90 88 Q72 94 56 89 Z', 'M60 90 Q72 94 86 89'], chef: ['M58 90 Q72 104 88 89 Q72 96 58 90 Z', 'M62 91 Q72 95 84 90'], hungry: ['M60 93 Q66 88 72 93 Q78 98 84 92', ''],
       neutral: ['M62 92 Q72 95 84 91', ''], happy: ['M58 90 Q72 104 88 89 Q72 96 58 90 Z', 'M62 91 Q72 95 84 90'], proud: ['M56 89 Q72 108 90 88 Q72 94 56 89 Z', 'M60 90 Q72 94 86 89'],
       flex: ['M60 90 L86 90 L85 97 Q72 100 61 97 Z', 'M60 90 L86 90 L85 93 L61 93 Z'], splash: ['M60 90 Q72 104 86 90 Z', ''], thirsty: ['M62 90 Q72 98 84 90 Z', ''],
@@ -182,8 +186,8 @@ function vals(props) {
     var tacheD = 'M58 86 Q62 78 72 82 Q80 77 88 84 Q90 90 84 88 Q78 85 72 87 Q64 85 60 90 Q55 90 58 86 Z';
     // hand-held props
     var hx = aF.hx, hy = aF.hy;
-    var BODYANIM = { love: 'k-a-bob', shock: 'k-a-shake', dance: 'k-a-hop', chef: 'k-a-nod', hungry: 'k-a-droop', neutral: 'k-a-nod', happy: 'k-a-bob', proud: 'k-a-hop', flex: 'k-a-nod', splash: 'k-a-hop', thirsty: 'k-a-droop', sugar: 'k-a-shake', coma: 'k-a-sway', sad: 'k-a-droop', sleepy: 'k-a-sway' };
-    var L = { love: 'In love', shock: 'Shocked', dance: 'Dancing', chef: 'Chef', hungry: 'Hungry', neutral: 'Calm', happy: 'Happy', proud: 'Proud', flex: 'Veggie power', splash: 'Refreshed', thirsty: 'Thirsty', sugar: 'Sugar rush', coma: 'Food coma', sad: 'Glum', sleepy: 'Sleepy' };
+    var BODYANIM = { angry: 'k-a-shake', love: 'k-a-bob', shock: 'k-a-shake', dance: 'k-a-hop', chef: 'k-a-nod', hungry: 'k-a-droop', neutral: 'k-a-nod', happy: 'k-a-bob', proud: 'k-a-hop', flex: 'k-a-nod', splash: 'k-a-hop', thirsty: 'k-a-droop', sugar: 'k-a-shake', coma: 'k-a-sway', sad: 'k-a-droop', sleepy: 'k-a-sway' };
+    var L = { angry: 'Angry', love: 'In love', shock: 'Shocked', dance: 'Dancing', chef: 'Chef', hungry: 'Hungry', neutral: 'Calm', happy: 'Happy', proud: 'Proud', flex: 'Veggie power', splash: 'Refreshed', thirsty: 'Thirsty', sugar: 'Sugar rush', coma: 'Food coma', sad: 'Glum', sleepy: 'Sleepy' };
     return {
       w: Math.round(size * 140 / 190), h: size, label: (sex === 'm' ? 'Samer' : 'Samira') + ', ' + L[mood], stillCls: animate ? '' : 'k-still',
       boil: animate ? 1.6 : 1.2,
@@ -211,7 +215,7 @@ function vals(props) {
       talkA: talk ? 'k-talkA' : '', talkB: talk ? 'k-talkB' : '', mouthB: mouthB, mouthBOp: talk ? 1 : 0,
       tongueD: 'M68 95 Q72 106 78 96 Z', tongueOp: mood === 'thirsty' || mood === 'hungry' ? 1 : 0, tearOp: mood === 'sad' ? 1 : 0,
       starsOp: mood === 'proud' || mood === 'chef' ? 1 : 0, zzzOp: (mood === 'coma' || mood === 'sleepy') ? 1 : 0, dropsOp: mood === 'splash' ? 1 : 0,
-      sweatOp: (mood === 'thirsty' || mood === 'sugar') ? 1 : 0, linesOp: mood === 'sugar' || mood === 'shock' ? 1 : 0, boingOp: mood === 'flex' ? 1 : 0,
+      sweatOp: (mood === 'thirsty' || mood === 'sugar') ? 1 : 0, linesOp: mood === 'sugar' || mood === 'shock' || mood === 'angry' ? 1 : 0, angryOp: mood === 'angry' ? 1 : 0, boingOp: mood === 'flex' ? 1 : 0,
       heartOp: mood === 'happy' ? 1 : 0, cloudOp: mood === 'sad' ? 1 : 0,
       lashOp: sex === 'f' && mood !== 'love' ? 1 : 0, earOp: sex === 'f' ? 1 : 0,
       heartEyesOp: mood === 'love' ? 1 : 0, heartEyesAnim: animate && mood === 'love' ? 'k-pump' : '', heartsOp: mood === 'love' ? 1 : 0, exclOp: mood === 'shock' ? 1 : 0, notesOp: mood === 'dance' ? 1 : 0, hatOp: mood === 'chef' ? 1 : 0, growlOp: mood === 'hungry' ? 1 : 0,
@@ -226,7 +230,7 @@ export function buddySvg(props) {
 }
 
 /* ---------------- mood engine ---------------- */
-export const MOOD_NAMES = { neutral: 'calm', happy: 'happy', proud: 'proud', flex: 'strong', splash: 'refreshed', thirsty: 'thirsty', sugar: 'hyper on sugar', coma: 'stuffed', sad: 'glum', sleepy: 'sleepy', love: 'in love', shock: 'shocked', dance: 'like dancing', chef: 'like a chef', hungry: 'hungry' };
+export const MOOD_NAMES = { angry: 'cross', neutral: 'calm', happy: 'happy', proud: 'proud', flex: 'strong', splash: 'refreshed', thirsty: 'thirsty', sugar: 'hyper on sugar', coma: 'stuffed', sad: 'glum', sleepy: 'sleepy', love: 'in love', shock: 'shocked', dance: 'like dancing', chef: 'like a chef', hungry: 'hungry' };
 export const LINES = {
   happy: ['Sahtein! Eating like a village grandma.', 'Ten out of ten. Teta would be proud.', 'Look at all that colour on the plate!', 'My cholesterol just sent a thank-you card.', 'This is going on the family WhatsApp.', 'I feel like a tabbouleh: fresh and full of parsley.'],
   flex: ['Broccoli? Feel this arm. FEEL IT.', 'Foul for breakfast. I am made of iron now.', 'Fibre! My insides are throwing a party.', 'Lentils: tiny, brown, and absolutely ripped.', 'One more spinach and I can lift the car.', 'Popeye who? Never heard of him.'],
@@ -293,7 +297,7 @@ export function reactTo(foods, kcal) {
 // Pick the mood for a day. ev = a recent event reaction ({ mood, t }).
 export function moodFor(day, plan, opts) {
   const o = opts || {}, now = new Date(), hr = now.getHours();
-  if (o.ev && Date.now() - o.ev.t < 9000) return o.ev.mood;
+  if (o.ev && Date.now() - o.ev.t < (o.ev.dur || 9000)) return o.ev.mood;
   const t = S.totals(day.entries), goal = o.waterGoal || 8;
   if (!day.entries.length) return o.isToday && (hr < 9 || hr >= 22) ? 'sleepy' : day.done ? 'proud' : o.isToday && hr >= 13 ? 'hungry' : 'neutral';
   if (t.kcal > plan.kcal * 1.08) return 'coma';
@@ -308,8 +312,57 @@ export function moodFor(day, plan, opts) {
   return 'neutral';
 }
 
-export function lineFor(mood, seed, sex) {
+export const ANGRY = ['RIGHT. That\'s it. I\'m calling my mother.', 'I am NOT a stress ball!', 'Poke me again. I dare you. Actually, don\'t.', 'ENOUGH, habibi! My moustache is shaking!', 'Do you poke your friends like this?!', 'I\'m going to count to ten. In Arabic. Slowly.'];
+export const SULK = ['Hmph.', 'Not talking to you.', '…', 'Still cross.', 'Talk to the hand.', 'I said I\'m fine. I\'m FINE.'];
+export const ANNOYED = ['Oi! Personal space!', 'Stop poking, I\'m digesting.', 'That tickles, habibi!', 'One more poke and I\'m calling my mother.', 'Do I look like a button to you?', 'Hey! I bruise like a peach.'];
+const EQUIV = [[60, 'an apple'], [100, 'a banana'], [160, 'a pot of yoghurt'], [260, 'a slice of pizza'], [400, 'a falafel wrap'], [600, 'a chicken shawarma'], [850, 'a mixed grill'], [1e9, 'a small feast']];
+const equiv = k => (EQUIV.find(e => k <= e[0]) || EQUIV[EQUIV.length - 1])[1];
+const VERDICT = { flex: 'good choice. Feel this arm.', love: 'lovely bit of fruit.', sugar: 'sweet… my teeth saw that.', sad: 'hmm. Salty choice.', happy: 'solid choice.', shock: 'that was a BIG one.', chef: 'home cooking. Chef\'s kiss.' };
+const r0 = n => Math.round(n).toLocaleString('en-GB');
+// Things worth saying about today, built from the real numbers.
+export function contextLines(c) {
+  const L = [], t = c.t, plan = c.plan, hr = c.isToday ? new Date().getHours() : 24, es = c.entries || [];
+  if (c.isToday && !es.length) L.push(hr < 11 ? 'Breakfast time! Even a banana counts.' : hr < 15 ? 'Nothing logged yet. I\'m running on vibes.' : 'Not a single bite logged. Are you photosynthesising?');
+  if (es.length) {
+    const left = plan.kcal - t.kcal;
+    if (left > 40) L.push(r0(left) + ' kcal left. That\'s about ' + equiv(left) + '.');
+    else if (left < -40) L.push(r0(-left) + ' kcal over. About ' + equiv(-left) + '. We walk it off tomorrow.');
+    else L.push('Bang on your calories. Precision engineering.');
+    const last = es[es.length - 1], v = VERDICT[reactTo([last.food], (last.n || {}).kcal || 0)];
+    if (v) L.push('That ' + last.food.name.toLowerCase().replace(/,.*$/, '') + ': ' + v);
+    const pp = t.p / plan.p;
+    if (pp >= 1) L.push('Protein target smashed: ' + r0(t.p) + ' g! Flexing as we speak.');
+    else if (hr >= 14 && pp < 0.5) L.push('Protein at ' + r0(t.p) + ' of ' + plan.p + ' g. My muscles are tapping their watch.');
+    if (t.fib >= plan.fib) L.push('Fibre goal hit. Everything is… moving along nicely.');
+    else if (hr >= 16) L.push(r0(t.fib) + ' g of fibre so far. Lentils, chickpeas, anything!');
+    if (t.sug > 50) L.push(r0(t.sug) + ' g of sugar today. My teeth are nervous.');
+    const na = t.salt * 400; if (na > 2300) L.push(r0(na) + ' mg of sodium. I\'m basically a pickle.');
+    const meals = new Set(es.map(e => e.meal));
+    if (c.isToday && hr >= 14 && !meals.has('Lunch')) L.push('No lunch logged. Did we forget, or are we lying?');
+    if (c.isToday && hr >= 20 && !meals.has('Dinner')) L.push('Dinner? Hello? Anyone in the kitchen?');
+  }
+  if (c.water >= c.goal) L.push('All ' + c.goal + ' cups done. I\'m basically a fountain.');
+  else if (c.isToday && (hr >= 12 || c.water)) L.push(c.water + ' of ' + c.goal + ' cups. ' + (c.goal - c.water) + ' to go, habibi.');
+  if (c.streak >= 2) L.push(c.streak + '-day streak! Don\'t you dare break it.');
+  if (c.done) L.push('Day marked done. Feet up, remote in hand.');
+  return L;
+}
+// What to say right after something happened.
+function eventLine(mood, c) {
+  const es = c.entries || [], last = es[es.length - 1];
+  if (mood === 'splash') return c.water >= c.goal ? null : 'Glug! ' + c.water + ' of ' + c.goal + ' cups. ' + (c.goal - c.water === 1 ? 'One more!' : (c.goal - c.water) + ' to go.');
+  if (mood === 'dance') return 'Cup number ' + c.goal + '! Water goal done. Dabke time!';
+  if (mood === 'proud') return c.streak >= 2 ? 'Day done! ' + c.streak + '-day streak. Tell the family WhatsApp group.' : null;
+  if (last && ['flex', 'love', 'sugar', 'sad', 'happy', 'shock', 'chef'].indexOf(mood) >= 0) {
+    const nm = last.food.name.replace(/,.*$/, '');
+    return { flex: nm + '? Feel this arm. FEEL IT.', love: nm + '! My heart goes boom boom.', sugar: nm + '?! I CAN HEAR COLOURS.', sad: nm + '… my arteries filed a complaint.', happy: nm + '. Sahtein!', shock: nm + '?! ' + r0((last.n || {}).kcal || 0) + ' kcal in one go?!', chef: nm + '. Homemade! Chef\'s kiss.' }[mood];
+  }
+  return null;
+}
+export function lineFor(mood, seed, sex, c) {
+  const fem = x => sex === 'f' ? (FEM[x] || x).replace('My moustache is shaking', 'My earrings are shaking') : x;
+  if (c && c.event) { const e = eventLine(mood, c); if (e) return fem(e); }
   let l = LINES[mood] || LINES.neutral;
-  if (sex === 'f') l = l.map(x => FEM[x] || x);
-  return l[Math.abs(seed | 0) % l.length];
+  if (c && !c.event) { const ctx = contextLines(c); if (ctx.length) l = ctx.concat(l.slice(0, Math.max(2, Math.ceil(ctx.length / 2)))); }
+  return fem(l[Math.abs(seed | 0) % l.length]);
 }
