@@ -449,11 +449,11 @@ a { color: var(--accent-ink); }
 /* ---------- page transitions (CSS only, never blocks taps) ---------- */
 .navpill { position: absolute; top: 6px; bottom: 6px; width: calc((100% - 12px) / 5); left: calc(6px + var(--to) * (100% - 12px) / 5); border-radius: 16px; background: var(--accent-soft); animation: navSlide .38s cubic-bezier(.3,1.35,.5,1) both; }
 @keyframes navSlide { from { left: calc(6px + var(--from) * (100% - 12px) / 5); } to { left: calc(6px + var(--to) * (100% - 12px) / 5); } }
-.pagein-r .screen > :not(.nav):not(#multibar) { animation: pageInR .42s cubic-bezier(.32,.72,0,1) both; }
-.pagein-l .screen > :not(.nav):not(#multibar) { animation: pageInL .42s cubic-bezier(.32,.72,0,1) both; }
+.pagein-r .screen > :not(.nav):not(#multibar) { animation: pageInR .32s cubic-bezier(.2,.8,.2,1) both; }
+.pagein-l .screen > :not(.nav):not(#multibar) { animation: pageInL .32s cubic-bezier(.2,.8,.2,1) both; }
 .pagein-up .screen > :not(.nav):not(#multibar) { animation: pageInUp .32s cubic-bezier(.2,.8,.2,1) both; }
-@keyframes pageInR { from { transform: translateX(100%); } to { transform: none; } }
-@keyframes pageInL { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes pageInR { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+@keyframes pageInL { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
 @keyframes pageInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 .nav a.on svg { animation: navIcon .45s cubic-bezier(.3,1.6,.5,1) both; }
 @keyframes navIcon { 0% { transform: scale(.7) translateY(3px); } 100% { transform: none; } }
@@ -499,3 +499,23 @@ html { overflow-x: hidden; }
 /* No accidental text selection (or the iPhone copy/look-up pop-up) anywhere except fields you type in */
 html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+
+/* Little Samer's speech bubble lives in a fixed slot, so a longer line never pushes the page down */
+.bubslot { position: relative; height: 46px; }
+.bubslot .bubble { position: absolute; left: 0; bottom: 4px; margin: 0; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 370px) { .bubslot { height: 42px; } }
+/* week strip: a new week slides in; swipe it left/right to change week */
+#weekstrip { touch-action: pan-y; }
+.week.wk-r button { animation: wkInR .36s cubic-bezier(.2,.85,.25,1) both; }
+.week.wk-l button { animation: wkInL .36s cubic-bezier(.2,.85,.25,1) both; }
+.week.wk-r button:nth-child(2), .week.wk-l button:nth-child(6) { animation-delay: .02s; } .week.wk-r button:nth-child(3), .week.wk-l button:nth-child(5) { animation-delay: .04s; }
+.week.wk-r button:nth-child(4), .week.wk-l button:nth-child(4) { animation-delay: .06s; } .week.wk-r button:nth-child(5), .week.wk-l button:nth-child(3) { animation-delay: .08s; }
+.week.wk-r button:nth-child(6), .week.wk-l button:nth-child(2) { animation-delay: .1s; } .week.wk-r button:nth-child(7), .week.wk-l button:nth-child(1) { animation-delay: .12s; }
+@keyframes wkInR { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: none; } }
+@keyframes wkInL { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: none; } }
+.week { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .week button { animation: none !important; } }
+/* in the week strip the dark bubble slides OVER the white day chips but under the letters */
+.glidegrp.week > button:not(.glider) { position: static; z-index: auto; }
+.glidegrp.week > .glider { z-index: 1; }
+.glidegrp.week > button > * { position: relative; z-index: 2; }

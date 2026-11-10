@@ -150,7 +150,6 @@ function render() {
   const dir = !anim || ui.lastView == null ? '' : a0 < 0 || a1 < 0 ? 'up' : a1 > a0 ? 'r' : 'l';
   ui.navFrom = anim && a0 >= 0 ? a0 : (ui.navFrom != null && !anim ? a1 : a1);
   ui.lastView = ui.view;
-  if ((dir === 'l' || dir === 'r') && !REDUCED()) slideOut(dir);
   $app.className = anim ? 'anim' + (dir ? ' pagein-' + dir : '') : '';
   $app.innerHTML = (VIEWS[ui.view] || VIEWS.today)();
   afterRender[ui.view] && afterRender[ui.view](anim);
@@ -189,6 +188,15 @@ function entryDetail(e, plan, open) {
     <div class="edline">Sugar <b>${g1(n.sug || 0)} g</b> · Sat fat <b>${g1(n.sat || 0)} g</b> · Sodium <b>${fmt(naMg(n.salt))} mg</b></div>
     <div class="edline muted">${fmt(e.grams)} ${e.food.liquid ? 'ml' : 'g'}${kc ? ' · ' + Math.round(n.p * 4 / kc * 100) + '% protein, ' + Math.round(n.c * 4 / kc * 100) + '% carbs, ' + Math.round(n.f * 9 / kc * 100) + '% fat' : ''}${when ? ' · logged ' + when : ''}${src ? ' · ' + esc(src) : ''}</div>
     <div class="edhint">${svg('<path d="M15 6l-6 6 6 6"/>', { s: 13, w: 2.6 })}Swipe left to edit or delete</div></div></div></div>`;
+}
+// Change the day on Today: the highlight glides within a week; a new week slides in from the side.
+function goDay(k) {
+  if (k === ui.date) return;
+  const oldWk = weekKeys(ui.date)[0], newWk = weekKeys(k)[0];
+  const sel = document.querySelector('#weekstrip .sel'), r0 = sel && oldWk === newWk ? sel.getBoundingClientRect() : null;
+  ui.wkSlide = oldWk === newWk || REDUCED() ? null : (newWk > oldWk ? 'r' : 'l');
+  ui.date = k; render(); ui.wkSlide = null;
+  if (r0) glideTo(r0, '#weekstrip [data-k="' + k + '"]');
 }
 function amountText(e) {
   const u = e.food.units[e.unit] || { short: 'g' };
@@ -260,13 +268,13 @@ VIEWS.today = () => {
     return S.totals(dd.entries).kcal > plan.kcal ? 'var(--over)' : 'var(--ring)';
   };
   return `<div class="screen">
-    <div class="top ${buddyOn() ? 'withbuddy' : ''}">${buddyOn() ? buddyHtml(d, plan, isToday) : ''}<div class="grow" style="min-width:0">${buddyOn() ? `<div class="bubble" id="bubble">${esc(buddyLine)}</div>` : ''}<div class="kicker ell">${isToday ? greet : 'Looking back'}</div><h1>samslimmer</h1></div>
+    <div class="top ${buddyOn() ? 'withbuddy' : ''}">${buddyOn() ? buddyHtml(d, plan, isToday) : ''}<div class="grow" style="min-width:0">${buddyOn() ? `<div class="bubslot"><div class="bubble" id="bubble">${esc(buddyLine)}</div></div>` : ''}<div class="kicker ell">${isToday ? greet : 'Looking back'}</div><h1>samslimmer</h1></div>
       <div class="row" style="gap:8px"><span class="chip" aria-label="${streak} day streak">${I.flame({ s: 16, c: 'var(--flame)', w: 2.4 })}${streak}</span>
         <button type="button" class="chip press" data-a="themeflip" aria-label="Switch to ${isDark() ? 'light' : 'dark'} mode" style="width:38px;justify-content:center;padding:7px 0">${isDark() ? svg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', { s: 18 }) : I.moon({ s: 17 })}</button></div></div>
     <div class="row" style="padding:0 14px"><button type="button" class="iconbtn ghost" data-a="dayshift" data-n="-1" aria-label="Previous day">${I.back({ s: 20 })}</button>
       <div class="grow" style="text-align:center;font-weight:800;font-size:15px">${S.prettyDate(k)}${isToday ? '' : ` <span class="small muted">· ${S.longDate(k)}</span>`}</div>
       <button type="button" class="iconbtn ghost" data-a="dayshift" data-n="1" aria-label="Next day" ${isToday ? 'disabled style="opacity:.25"' : ''}>${I.next({ s: 20 })}</button></div>
-    <div class="week">${wk.map(key => { const dd = S.parseKey(key), fut = key > S.todayKey(); return `<button type="button" class="${key === k ? 'sel' : ''}" data-a="day" data-k="${key}" ${fut ? 'disabled style="opacity:.4"' : ''} aria-label="${S.longDate(key)}"><span>${'MTWTFSS'[(dd.getDay() + 6) % 7]}</span><span class="dot" style="background:${key === k && !d.entries.length ? 'transparent' : dayDot(key)}"></span></button>`; }).join('')}</div>
+    <div class="week ${ui.wkSlide ? 'wk-' + ui.wkSlide : ''}" id="weekstrip">${wk.map(key => { const dd = S.parseKey(key), fut = key > S.todayKey(); return `<button type="button" class="${key === k ? 'sel on' : ''}" data-a="day" data-k="${key}" ${fut ? 'disabled style="opacity:.4"' : ''} aria-label="${S.longDate(key)}"><span>${'MTWTFSS'[(dd.getDay() + 6) % 7]}</span><span class="dot" style="background:${key === k && !d.entries.length ? 'transparent' : dayDot(key)}"></span></button>`; }).join('')}</div>
     <div class="content">
       <div class="card rise">
         <div class="ringwrap"><svg width="184" height="184" viewBox="0 0 220 220" role="img" aria-label="${fmt(t.kcal)} of ${fmt(plan.kcal)} calories">
@@ -1414,6 +1422,17 @@ function removeEntry(id) {
   toast(e.food.name + ' removed', fmt(e.n.kcal) + ' kcal taken off ' + e.meal, '', { label: 'Undo', fn: () => { const d2 = S.day(key); d2.entries.splice(Math.min(i, d2.entries.length), 0, e); S.save(); if (ui.view === 'today') render(); } });
 }
 
+/* ================= SWIPE THE WEEK STRIP ================= */
+let wsw = null;
+document.addEventListener('pointerdown', e => { const w = e.target.closest && e.target.closest('#weekstrip'); wsw = w ? { x: e.clientX, y: e.clientY } : null; });
+document.addEventListener('pointerup', e => {
+  if (!wsw) return; const dx = e.clientX - wsw.x, dy = e.clientY - wsw.y; wsw = null;
+  if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  swipeJustEnded = true; setTimeout(() => { swipeJustEnded = false; }, 80);
+  let k = S.addDays(ui.date, dx < 0 ? 7 : -7); const t = S.todayKey(); if (k > t) k = t;
+  if (k !== ui.date) goDay(k);
+});
+
 /* ================= SWIPE DOWN TO CLOSE CARDS ================= */
 // Touch events (not pointer events) so we can stop the page scrolling while a card is dragged.
 let drag = null;
@@ -1557,7 +1576,7 @@ const A = {
   go: (d, el, e) => { e.preventDefault(); if (d.v === 'foods') ui.meal = null; go(d.v); },
   // today
   day: d => { ui.date = d.k; render(); },
-  dayshift: d => { const k = S.addDays(ui.date, +d.n); if (k <= S.todayKey()) { ui.date = k; render(); } },
+  dayshift: d => { const k = S.addDays(ui.date, +d.n); if (k <= S.todayKey()) goDay(k); },
   cup: (d, el) => {
     const day = S.day(ui.date), i = +d.i, before = day.water;
     day.water = day.water === i + 1 ? i : i + 1; S.save();
@@ -1842,7 +1861,7 @@ document.addEventListener('click', e => {
   if (key && !glided) boing(key, t);
 });
 // The selected bubble glides from the old choice to the new one.
-const GLIDE = '.pill, .seg button';
+const GLIDE = '.pill, .seg button, .week button';
 function glideFrom(t) {
   const par = t.parentElement; if (!par || REDUCED()) return null;
   const prev = Array.prototype.find.call(par.children, c => c !== t && c.classList.contains('on') && c.matches(GLIDE));
