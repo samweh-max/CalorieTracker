@@ -993,13 +993,14 @@ function calorieCard(keys, plan) {
 function macroCard(plan) {
   const ds = ui.dash, today = S.todayKey();
   const week = Array.from({ length: 7 }, (_, i) => S.addDays(today, i - 6));
-  const lastLogged = week.slice().reverse().find(k => S.peekDay(k).entries.length);
-  const mday = ds.mday && week.indexOf(ds.mday) >= 0 ? ds.mday : (S.peekDay(today).entries.length ? today : lastLogged || today);
   const tots = week.map(k => S.totals(S.peekDay(k).entries));
-  const MAXK = Math.max(plan.kcal, ...tots.map(t => t.p * 4 + t.c * 4 + t.f * 9)), WH = 116;
-  const t = S.totals(S.peekDay(mday).entries);
-  const pk = t.p * 4, ck = t.c * 4, fk = t.f * 9, tk = pk + ck + fk, C = 157.08;
-  // Solid wedges with plain hex colours (no CSS variables, no dash tricks) so every phone browser draws them.
+  // Pie: average of logged days in the chosen range, or one day if you tapped a bar.
+  const day = ds.mday && week.indexOf(ds.mday) >= 0 ? ds.mday : null;
+  const rk = T.rangeKeys(ds.range).filter(k => S.peekDay(k).entries.length);
+  let t;
+  if (day) t = S.totals(S.peekDay(day).entries);
+  else { t = { kcal: 0, p: 0, c: 0, f: 0, fib: 0, sug: 0, sat: 0, salt: 0 }; rk.forEach(k => { const x = S.totals(S.peekDay(k).entries); Object.keys(t).forEach(n => { t[n] += x[n] || 0; }); }); const n = Math.max(1, rk.length); Object.keys(t).forEach(k => { t[k] /= n; }); }
+  const pk = t.p * 4, ck = t.c * 4, fk = t.f * 9, tk = pk + ck + fk;
   const wedge = (a0, a1, col) => {
     if (a1 - a0 >= 0.9999) return `<circle cx="50" cy="50" r="50" fill="${col}"/>`;
     const P = a => [50 + 50 * Math.cos(2 * Math.PI * a - Math.PI / 2), 50 + 50 * Math.sin(2 * Math.PI * a - Math.PI / 2)].map(v => v.toFixed(2)).join(' ');
@@ -1009,29 +1010,38 @@ function macroCard(plan) {
   const slices = tk ? [[pk, '#6366F1'], [ck, '#F97316'], [fk, '#EAB308']].filter(x => x[0] > 0).map(([v, c]) => { const a0 = acc; acc += v / tk; return wedge(a0, acc, c); }).join('')
     : `<circle cx="50" cy="50" r="50" fill="${isDark() ? '#2A3433' : '#E9ECEC'}"/>`;
   const pct = v => tk ? Math.round(v / tk * 100) + '% of kcal' : '—';
+  // Bars: last 7 days, drawn as plain SVG rectangles so every phone shows them.
+  const MAXK = Math.max(plan.kcal, ...tots.map(x => x.p * 4 + x.c * 4 + x.f * 9)), WH = 116, dark = isDark();
   const cols = week.map((k, i) => {
-    const x = tots[i], tot = x.p * 4 + x.c * 4 + x.f * 9, h = tot ? Math.max(6, tot / MAXK * WH) : 4, on = k === mday;
-    const part = v => (tot ? v / tot * h : 0).toFixed(1) + 'px';
-    return `<button type="button" class="mcol" data-a="mday" data-k="${k}" aria-label="${S.longDate(k)} macros" style="height:${h.toFixed(1)}px;outline:${on ? '2px solid var(--ink)' : '0'};opacity:${on ? 1 : .78}">${tot ? `<span style="height:${part(x.f * 9)};background-color:#EAB308;background-color:var(--fat)"></span><span style="height:${part(x.c * 4)};background-color:#F97316;background-color:var(--carb)"></span><span style="height:${part(x.p * 4)};background-color:#6366F1;background-color:var(--prot)"></span>` : '<span style="height:100%;background-color:#E9ECEC;background-color:var(--soft2)"></span>'}</button>`;
+    const x = tots[i], tot = x.p * 4 + x.c * 4 + x.f * 9, h = tot ? Math.max(6, tot / MAXK * WH) : 4, on = k === day;
+    let y = WH, rects = '';
+    if (tot) [[x.p * 4, '#6366F1'], [x.c * 4, '#F97316'], [x.f * 9, '#EAB308']].forEach(([v, c]) => { const hh = v / tot * h; y -= hh; rects += `<rect x="0" y="${y.toFixed(1)}" width="20" height="${(hh + 0.4).toFixed(1)}" fill="${c}"/>`; });
+    else rects = `<rect x="0" y="${WH - 4}" width="20" height="4" fill="${dark ? '#2A3433' : '#E9ECEC'}"/>`;
+    return `<button type="button" class="mcol2 ${on ? 'on' : ''}" data-a="mday" data-k="${k}" aria-label="${S.longDate(k)} macros" aria-pressed="${on}"><svg viewBox="0 0 20 ${WH}" preserveAspectRatio="none" width="100%" height="${WH}"><defs><clipPath id="mc${i}"><rect x="0" y="${(WH - h).toFixed(1)}" width="20" height="${h.toFixed(1)}" rx="4"/></clipPath></defs><g clip-path="url(#mc${i})">${rects}</g></svg></button>`;
   }).join('');
-  const labels = week.map(k => `<span style="flex:1;text-align:center;font-size:11px;font-weight:${k === mday ? 800 : 600};color:${k === mday ? 'var(--ink)' : 'var(--ink2)'}">${k === today ? 'Today' : 'MTWTFSS'[(S.parseKey(k).getDay() + 6) % 7]}</span>`).join('');
-  const dayLbl = mday === today ? 'Today' : S.longDate(mday);
+  const labels = week.map(k => `<span style="flex:1;text-align:center;font-size:11px;font-weight:${k === day ? 800 : 600};color:${k === day ? 'var(--ink)' : 'var(--ink2)'}">${k === today ? 'Today' : 'MTWTFSS'[(S.parseKey(k).getDay() + 6) % 7]}</span>`).join('');
+  const RL = { week: '7 days', month: '30 days', m3: '3 months', year: '12 months', all: 'all time' };
+  const lbl = day ? (day === today ? 'Today' : S.longDate(day)) : 'Average · ' + RL[ds.range];
+  const sub = day ? 'Tap the day again for the average' : rk.length ? 'Daily average of ' + rk.length + ' logged day' + (rk.length > 1 ? 's' : '') + ' · tap a bar for one day' : 'Nothing logged in this period yet';
   return `<div class="card rise" style="display:flex;flex-direction:column;gap:12px">
-    <div class="row" style="align-items:flex-start"><div class="grow"><div style="font-size:16px;font-weight:800">Macros</div><div class="small muted">Last 7 days · tap a day</div></div><span class="pill" style="background:var(--accent-soft);color:var(--accent-ink);height:28px;display:flex;align-items:center">${dayLbl}</span></div>
+    <div class="row" style="align-items:flex-start;gap:8px"><div class="grow"><div style="font-size:16px;font-weight:800">Macros</div><div class="small muted">${sub}</div></div><button type="button" class="pill press" data-a="mday" data-k="" style="background:var(--accent-soft);color:var(--accent-ink);height:28px;display:flex;align-items:center;border:0;font-weight:800;white-space:nowrap">${esc(lbl)}${day ? ' ✕' : ''}</button></div>
     <div class="row" style="gap:14px;align-items:center">
-      <div style="position:relative;width:128px;height:128px;flex:none"><svg class="pie" width="128" height="128" viewBox="0 0 100 100" role="img" aria-label="Macro split for ${dayLbl}">${slices}<circle cx="50" cy="50" r="27" fill="${isDark() ? '#182124' : '#FFFFFF'}"/></svg>
-        <div class="ringtext"><span style="font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1.1">${tk ? fmt(t.kcal) : '0'}</span><span class="small muted" style="font-size:10px">kcal</span></div></div>
-      <div class="grow" style="display:flex;flex-direction:column;gap:6px"><div class="row" style="height:${WH + 4}px;align-items:flex-end;gap:5px">${cols}</div><div class="row" style="gap:5px">${labels}</div></div></div>
-    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${[['Protein', t.p, plan.p, 'var(--prot)', pct(pk)], ['Carbs', t.c, plan.c, 'var(--carb)', pct(ck)], ['Fat', t.f, plan.f, 'var(--fat)', pct(fk)], ['Fibre', t.fib, plan.fib, 'var(--fib)', t.fib >= plan.fib ? 'Target hit' : fmt(plan.fib - t.fib) + ' g to go']].map(([l, v, tg, c, sub]) =>
-      `<div><div class="small" style="display:flex;align-items:center;gap:5px;font-weight:700"><i class="key" style="background:${c}"></i>${l}</div><div style="font-size:13px;font-weight:800">${fmt(v)} / ${tg}g</div><div class="muted" style="font-size:10px;font-weight:600">${sub}</div></div>`).join('')}</div>
-    <div class="extras" style="border-top:1px solid var(--line);padding-top:8px;margin-top:0">Also on ${mday === today ? 'today' : dayLbl}: sugar ${g1(t.sug)} g · sat fat ${g1(t.sat)} g · sodium ${fmt(naMg(t.salt))} mg</div></div>`;
+      <div style="position:relative;width:128px;height:128px;flex:none"><svg class="pie" width="128" height="128" viewBox="0 0 100 100" role="img" aria-label="Macro split, ${esc(lbl)}">${slices}<circle cx="50" cy="50" r="27" fill="${dark ? '#182124' : '#FFFFFF'}"/></svg>
+        <div class="ringtext"><span style="font-size:19px;font-weight:800;letter-spacing:-.5px;line-height:1.1">${tk ? fmt(t.kcal) : '0'}</span><span class="small muted" style="font-size:10px">${day ? 'kcal' : 'kcal / day'}</span></div></div>
+      <div class="grow" style="display:flex;flex-direction:column;gap:6px;min-width:0"><div class="row" style="height:${WH + 4}px;align-items:flex-end;gap:5px">${cols}</div><div class="row" style="gap:5px">${labels}</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${[['Protein', t.p, plan.p, '#6366F1', pct(pk)], ['Carbs', t.c, plan.c, '#F97316', pct(ck)], ['Fat', t.f, plan.f, '#EAB308', pct(fk)], ['Fibre', t.fib, plan.fib, '#10B981', t.fib >= plan.fib ? 'Target hit' : fmt(plan.fib - t.fib) + ' g to go']].map(([l, v, tg, c, s2]) =>
+      `<div><div class="small" style="display:flex;align-items:center;gap:5px;font-weight:700"><i class="key" style="background-color:${c}"></i>${l}</div><div style="font-size:13px;font-weight:800">${fmt(v)} / ${tg}g</div><div class="muted" style="font-size:10px;font-weight:600">${s2}</div></div>`).join('')}</div>
+    <div class="extras" style="border-top:1px solid var(--line);padding-top:8px;margin-top:0">${day ? 'Also on ' + (day === today ? 'today' : S.longDate(day)) : 'Average per day'}: sugar ${g1(t.sug)} g · sat fat ${g1(t.sat)} g · sodium ${fmt(naMg(t.salt))} mg</div></div>`;
 }
 
 function journeyCard() {
   const j = T.journey();
   const units = S.state.profile.units;
   const recent = T.recentMilestones(3);
-  const recentHtml = recent.length ? `<div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px"><div class="small muted" style="font-weight:700">Recent milestones</div>${recent.map(m => `<div class="row" style="gap:10px"><span class="mdot ${m.kind}"></span><div class="grow"><div style="font-size:13px;font-weight:700">${esc(m.text)}</div><div class="muted" style="font-size:11px;font-weight:600">${esc(m.sub)} · ${S.prettyDate(m.when)}</div></div></div>`).join('')}</div>` : '';
+  const nx = T.nextMilestones(2);
+  const nextHtml = nx.length ? `<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px"><div class="small muted" style="font-weight:700">Next up</div>${nx.map(m => `<div class="row" style="gap:10px"><span class="mdot ${m.kind}"></span><div class="grow" style="display:flex;flex-direction:column;gap:5px"><div style="font-size:13px;font-weight:700">${esc(m.text)}</div><div class="nxbar"><i style="width:${Math.max(4, Math.round(m.frac * 100))}%"></i></div></div></div>`).join('')}</div>` : '';
+  const recentHtml0 = recent.length ? `<div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px"><div class="small muted" style="font-weight:700">Recent milestones</div>${recent.map(m => `<div class="row" style="gap:10px"><span class="mdot ${m.kind}"></span><div class="grow"><div style="font-size:13px;font-weight:700">${esc(m.text)}</div><div class="muted" style="font-size:11px;font-weight:600">${esc(m.sub)} · ${S.prettyDate(m.when)}</div></div></div>`).join('')}</div>` : '';
+  const recentHtml = nextHtml + recentHtml0;
   if (j.maintaining) {
     const d = j.now - j.goal;
     return `<div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div style="font-size:16px;font-weight:800">Milestones</div>
@@ -1570,9 +1580,9 @@ const A = {
   autobk: () => { S.state.settings.autoBackup = S.state.settings.autoBackup === false; S.save(); render(); },
   restore: () => { const el = document.getElementById('restorefile'); if (el) el.click(); },
   snooze: () => { const daily = S.state.settings.autoBackup !== false; S.state.settings.backupSnooze = S.addDays(S.todayKey(), daily ? 1 : 7); S.save(); render(); toast('No problem', daily ? 'I\'ll ask again tomorrow. Backups live in Me.' : 'I\'ll remind you in a week. Backups live in Me.'); },
-  drange: d => { ui.dash.range = d.v; ui.dash.sel = null; render(); },
+  drange: d => { ui.dash.range = d.v; ui.dash.sel = null; ui.dash.mday = null; render(); },
   dsel: d => { ui.dash.sel = ui.dash.sel === d.k ? null : d.k; render(); },
-  mday: d => { ui.dash.mday = d.k; render(); },
+  mday: d => { ui.dash.mday = d.k && ui.dash.mday !== d.k ? d.k : null; render(); },
   logweight: () => openWeighIn(),
   wbox: d => { weighPad(d.id); renderOverlay(true); },
   wunits: d => { S.state.profile.units = d.v; S.save(); render(); },
