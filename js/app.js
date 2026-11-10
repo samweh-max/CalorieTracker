@@ -1423,7 +1423,7 @@ let sw = null, swipeJustEnded = false;
 function closeSwipes(except) { document.querySelectorAll('.swipe .entry, .swipe .res').forEach(el => { if (el !== except && el._open) { el.style.transform = ''; el._open = false; } }); }
 document.addEventListener('pointerdown', e => {
   const en = e.target.closest('.swipe .entry, .swipe .res');
-  if (!en) { if (!e.target.closest('.swipe-del, .swipe-acts')) closeSwipes(); return; }
+  if (!en) { if (!e.target.closest('.swipe-del, .swipe-acts, .ebg')) closeSwipes(); return; }
   const rsw = !!en.closest('.rsw'), open = rsw ? 172 : 168;
   sw = { el: en, x: e.clientX, y: e.clientY, dx: 0, active: false, open, rsw, base: en._open ? -open : 0 };
 });
