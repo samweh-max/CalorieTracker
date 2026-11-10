@@ -179,6 +179,17 @@ function weekKeys(k) {
   return Array.from({ length: 7 }, (_, i) => S.addDays(mon, i));
 }
 
+function entryDetail(e, plan, open) {
+  const n = e.n || {}, kc = (n.p || 0) * 4 + (n.c || 0) * 4 + (n.f || 0) * 9;
+  const m = (l, v, tg, col) => `<div class="edm"><div class="edm-h"><i class="key" style="background-color:${col}"></i>${l}</div><b>${g1(v || 0)} g</b><span class="nxbar"><i style="width:${Math.min(100, Math.round((v || 0) / tg * 100))}%;background-color:${col}"></i></span><small>${Math.round((v || 0) / tg * 100)}% of day</small></div>`;
+  const when = e.t ? new Date(e.t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+  const src = (F.SRC && F.SRC[e.food.src] && F.SRC[e.food.src].label) || '';
+  return `<div class="edet ${open ? 'open' : ''}" id="ed-${e.id}"><div class="edin"><div class="edbox">
+    <div class="edgrid">${m('Protein', n.p, plan.p, '#6366F1')}${m('Carbs', n.c, plan.c, '#F97316')}${m('Fat', n.f, plan.f, '#EAB308')}${m('Fibre', n.fib, plan.fib, '#10B981')}</div>
+    <div class="edline">Sugar <b>${g1(n.sug || 0)} g</b> · Sat fat <b>${g1(n.sat || 0)} g</b> · Sodium <b>${fmt(naMg(n.salt))} mg</b></div>
+    <div class="edline muted">${fmt(e.grams)} ${e.food.liquid ? 'ml' : 'g'}${kc ? ' · ' + Math.round(n.p * 4 / kc * 100) + '% protein, ' + Math.round(n.c * 4 / kc * 100) + '% carbs, ' + Math.round(n.f * 9 / kc * 100) + '% fat' : ''}${when ? ' · logged ' + when : ''}${src ? ' · ' + esc(src) : ''}</div>
+    <div class="edhint">${svg('<path d="M15 6l-6 6 6 6"/>', { s: 13, w: 2.6 })}Swipe left to edit or delete</div></div></div></div>`;
+}
 function amountText(e) {
   const u = e.food.units[e.unit] || { short: 'g' };
   const plain = WEIGHTY.indexOf(u.short) >= 0;
@@ -240,7 +251,7 @@ VIEWS.today = () => {
     const kc = es.reduce((s, e) => s + e.n.kcal, 0);
     return `<div class="card rise"><div class="meal-h"><div class="grow"><div class="h2">${esc(m)}</div><div class="small muted">${es.length ? fmt(kc) + ' kcal' : 'Nothing yet'}</div></div>
       <button type="button" class="addbtn press" data-a="addto" data-meal="${esc(m)}" aria-label="Add food to ${esc(m)}">${I.plus({ s: 18, w: 2.8 })}</button></div>
-      ${es.map(e => `<div class="swipe"><button type="button" class="swipe-del" data-a="swdel" data-id="${e.id}" tabindex="-1" aria-hidden="true">${I.trash({ s: 18, c: '#fff' })}Delete</button><button type="button" class="entry" data-a="entry" data-id="${e.id}" aria-label="${esc(e.food.name)}, ${fmt(e.n.kcal)} kcal. Tap to edit, swipe left to delete">${F.foodTile(e.food, 32)}<div class="grow"><div class="nm ell">${esc(e.food.name)}</div><div class="am ell">${esc(amountText(e))}${e.food.brand ? ' · ' + esc(e.food.brand) : ''}</div></div><span class="kc">${fmt(e.n.kcal)}</span></button></div>`).join('')}
+      ${es.map(e => { const op = ui.openEntry === e.id; return `<div class="swipe esw"><div class="ebg"><button type="button" class="sw-edit2" data-a="swedit" data-id="${e.id}" tabindex="-1">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>', { s: 18, c: '#fff' })}Edit</button><button type="button" class="swipe-del" data-a="swdel" data-id="${e.id}" tabindex="-1">${I.trash({ s: 18, c: '#fff' })}Delete</button></div><button type="button" class="entry ${op ? 'open' : ''}" data-a="entry" data-id="${e.id}" aria-expanded="${op}" aria-label="${esc(e.food.name)}, ${fmt(e.n.kcal)} kcal. Tap for details, swipe left to edit or delete">${F.foodTile(e.food, 32)}<div class="grow"><div class="nm ell">${esc(e.food.name)}</div><div class="am ell">${esc(amountText(e))}${e.food.brand ? ' · ' + esc(e.food.brand) : ''}</div></div><span class="kc">${fmt(e.n.kcal)}</span><span class="echev" aria-hidden="true">${svg('<path d="M7 10l5 5 5-5"/>', { s: 16, w: 2.6 })}</span></button></div>${entryDetail(e, plan, op)}`; }).join('')}
     </div>`;
   }).join('');
   const dayDot = key => {
@@ -1369,7 +1380,7 @@ function closeSwipes(except) { document.querySelectorAll('.swipe .entry, .swipe 
 document.addEventListener('pointerdown', e => {
   const en = e.target.closest('.swipe .entry, .swipe .res');
   if (!en) { if (!e.target.closest('.swipe-del, .swipe-acts')) closeSwipes(); return; }
-  const rsw = !!en.closest('.rsw'), open = rsw ? 172 : 88;
+  const rsw = !!en.closest('.rsw'), open = rsw ? 172 : 168;
   sw = { el: en, x: e.clientX, y: e.clientY, dx: 0, active: false, open, rsw, base: en._open ? -open : 0 };
 });
 document.addEventListener('pointermove', e => {
@@ -1379,7 +1390,7 @@ document.addEventListener('pointermove', e => {
     if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) { sw.active = true; sw.el.style.transition = 'none'; closeSwipes(sw.el); }
     else if (Math.abs(dy) > 12) { sw = null; return; }
   }
-  if (sw.active) { sw.dx = Math.min(0, sw.base + dx); if (sw.rsw) sw.dx = Math.max(sw.dx, -sw.open - 30); sw.el.style.transform = `translateX(${sw.dx}px)`; e.preventDefault(); }
+  if (sw.active) { sw.dx = Math.min(0, sw.base + dx); if (sw.rsw) sw.dx = Math.max(sw.dx, -sw.open - 30); sw.el.style.transform = `translateX(${sw.dx}px)`; const bg = sw.el.parentNode.querySelector('.ebg'); if (bg) bg.classList.toggle('full', sw.dx < -sw.el.offsetWidth * 0.62); e.preventDefault(); }
 }, { passive: false });
 function endSwipe() {
   if (!sw) return;
@@ -1389,9 +1400,10 @@ function endSwipe() {
   s.el.style.transition = '';
   const w = s.el.offsetWidth;
   if (s.rsw) { if (s.dx < -60) { s.el.style.transform = `translateX(-${s.open}px)`; s.el._open = true; } else { s.el.style.transform = ''; s.el._open = false; } return; }
-  if (s.dx < -w * 0.45) { s.el.style.transform = `translateX(-${w}px)`; if (navigator.vibrate) navigator.vibrate(10); setTimeout(() => removeEntry(s.el.dataset.id), 170); }
-  else if (s.dx < -44) { s.el.style.transform = 'translateX(-88px)'; s.el._open = true; }
-  else { s.el.style.transform = ''; s.el._open = false; }
+  const bg = s.el.parentNode.querySelector('.ebg');
+  if (s.dx < -w * 0.62) { s.el.style.transform = `translateX(-${w}px)`; if (navigator.vibrate) navigator.vibrate(10); setTimeout(() => removeEntry(s.el.dataset.id), 170); }
+  else if (s.dx < -50) { s.el.style.transform = 'translateX(-' + s.open + 'px)'; s.el._open = true; if (bg) bg.classList.remove('full'); }
+  else { s.el.style.transform = ''; s.el._open = false; if (bg) bg.classList.remove('full'); }
 }
 document.addEventListener('pointerup', endSwipe);
 document.addEventListener('pointercancel', endSwipe);
@@ -1567,6 +1579,15 @@ const A = {
   addto: d => { ui.meal = d.meal; ui.view = 'foods'; ui.q = ''; ui.tab = 'all'; ui.online = { q: '', status: 'idle', items: [], cnf: [] }; render(); window.scrollTo(0, 0); },
   entry: (d, el) => {
     if (el && el._open) { el.style.transform = ''; el._open = false; return; }
+    closeSwipes();
+    const open = ui.openEntry !== d.id;
+    ui.openEntry = open ? d.id : null;
+    document.querySelectorAll('.edet.open').forEach(x => { x.classList.remove('open'); });
+    document.querySelectorAll('.esw .entry.open').forEach(x => { x.classList.remove('open'); x.setAttribute('aria-expanded', 'false'); });
+    if (open) { const det = document.getElementById('ed-' + d.id); if (det) det.classList.add('open'); el.classList.add('open'); el.setAttribute('aria-expanded', 'true'); }
+  },
+  swedit: d => {
+    closeSwipes();
     const e = S.day(ui.date).entries.find(x => x.id === d.id);
     if (e) { ui.meal = e.meal; openFoodSheet(e.food, { mode: 'edit', entryId: e.id, amt: e.amt, unit: e.unit, meal: e.meal }); }
   },
