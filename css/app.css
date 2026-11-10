@@ -277,7 +277,17 @@ a { color: var(--accent-ink); }
 .pick.on { background: var(--accent); border-color: var(--accent); }
 .pick.popnow { animation: pop .25s ease-out; }
 .selstrip { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 4px 6px; }
-.selchip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 12px; border-radius: 99px; border: 0; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; }
+.selchip { flex: none; display: inline-flex; align-items: center; height: 34px; border-radius: 99px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; overflow: hidden; }
+.selchip button { border: 0; background: transparent; color: #fff; font: inherit; height: 100%; display: inline-flex; align-items: center; cursor: pointer; }
+.selchip-main { gap: 6px; padding: 0 4px 0 12px; }
+.selchip-main b { font-weight: 800; background: rgba(255,255,255,.2); border-radius: 99px; padding: 2px 7px; font-size: 11px; }
+.selchip-x { padding: 0 10px 0 6px; }
+.mlist { display: flex; flex-direction: column; }
+.mrow { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-top: 1px solid var(--line); }
+.pill.mu { flex: 1; min-width: 0; height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 10px 0 12px; font-size: 12px; }
+.mstepper { flex: none; display: flex; align-items: center; gap: 4px; background: var(--bg); border-radius: 12px; padding: 2px; }
+.mstepper .step { width: 34px; height: 32px; border-radius: 10px; background: var(--card); }
+.mamt { min-width: 52px; height: 32px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; font-weight: 800; text-align: center; cursor: pointer; }
 .selchip.new { animation: pop .22s ease-out; }
 .res { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .multibar { position: fixed; left: 0; right: 0; margin: 0 auto; bottom: calc(92px + var(--safe-b)); width: calc(100% - 32px); max-width: 448px; z-index: 21; background: var(--hero); color: var(--hero-ink); border-radius: 18px; padding: 10px 10px 10px 16px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.25); animation: rise .25s ease-out both; }
@@ -359,3 +369,41 @@ a { color: var(--accent-ink); }
 .swatch { width: 30px; height: 30px; border-radius: 99px; border: 3px solid transparent; box-shadow: 0 0 0 1px rgba(0,0,0,.12) inset; padding: 0; }
 .swatch.on { border-color: var(--ink); }
 @media (max-width: 370px) { .top.withbuddy .kicker { display: none; } .bubble { font-size: 11.5px; padding: 5px 9px; } .buddy { width: 52px; height: 70px; } .buddy svg { width: 52px; height: 70px; } .top.withbuddy h1 { font-size: 19px; } }
+.pick { position: relative; } .pick::before { content: ""; position: absolute; inset: -12px; top: -12px; left: -12px; right: -12px; bottom: -12px; }
+
+/* swipeable recipe rows */
+.swipe.rsw { border-top: 0; }
+.swipe .res { position: relative; z-index: 1; background: var(--card); touch-action: pan-y; transition: transform .22s cubic-bezier(.2,.8,.2,1); width: 100%; }
+.swipe-acts { position: absolute; top: 0; right: 0; bottom: 0; display: flex; }
+.swipe-acts button { width: 86px; border: 0; color: #fff; font-weight: 800; font-size: 13px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.sw-edit { background: #B7791F; }
+.sw-del { background: var(--over); }
+.mtile { flex: none; width: 44px; height: 44px; border-radius: 14px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; }
+
+/* ---------- Create a food: packet-label style ---------- */
+.cf-tile { border: 0; padding: 0; background: transparent; border-radius: 16px; flex: none; }
+.cf-name { width: 100%; border: 0; background: transparent; font: inherit; font-size: 21px; font-weight: 800; letter-spacing: -.4px; color: var(--ink); padding: 2px 0; outline: none; border-bottom: 2px solid transparent; }
+.cf-name:focus { border-bottom-color: var(--accent); }
+.cf-brand { width: 100%; border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: var(--ink2); padding: 2px 0; outline: none; }
+.cf-addbrand { border: 0; background: transparent; padding: 2px 0; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink3); cursor: pointer; }
+.cf-icons { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: 0 -2px; }
+.cf-icons::-webkit-scrollbar { display: none; }
+.cf-icons button { border: 0; padding: 0; background: transparent; border-radius: 12px; flex: none; outline: 2px solid transparent; outline-offset: 1px; }
+.cf-icons button.on { outline-color: var(--accent); }
+.cf-icons.flash { animation: cfflash .6s ease-out; }
+@keyframes cfflash { 0%, 100% { background: transparent } 30% { background: var(--accent-soft) } }
+.nlabel { border: 3px solid var(--ink); border-radius: 18px; padding: 10px 14px 8px; display: flex; flex-direction: column; flex-shrink: 0; }
+.nl-title { font-size: 22px; font-weight: 900; letter-spacing: -.5px; }
+.nl-basis { height: 30px !important; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; max-width: 60%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.nl-panel { display: flex; flex-direction: column; gap: 8px; background: var(--bg); border-radius: 14px; padding: 10px; margin-top: 8px; }
+.nl-cal { display: flex; align-items: center; border-top: 7px solid var(--ink); margin-top: 8px; padding: 8px 0 6px; }
+.nl-row { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--ink); padding: 5px 0; }
+.nl-row.sub { padding-left: 14px; border-top-color: var(--line); }
+.nl-l { flex: 1; font-size: 14px; }
+.nl-num { min-width: 82px; height: 32px; border-radius: 10px; border: 2px solid transparent; background: var(--bg); color: var(--ink); font: inherit; display: inline-flex; align-items: center; justify-content: flex-end; gap: 1px; padding: 0 10px; cursor: pointer; flex: none; }
+.nl-num .v { font-size: 15px; font-weight: 800; }
+.nl-num .u { font-size: 11px; font-weight: 700; color: var(--ink3); margin-left: 4px; }
+.nl-num.on { border-color: var(--accent); background: var(--accent-soft); }
+.nl-num.big { min-width: 110px; height: 44px; }
+.nl-num.big .v { font-size: 28px; font-weight: 900; letter-spacing: -1px; }
+.nl-panel .nl-num { height: 44px; min-width: 76px; background: var(--card); }

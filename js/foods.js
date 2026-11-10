@@ -381,3 +381,39 @@ export function foodTile(food, size = 40) {
   const s = Math.round(size * 0.52);
   return `<span class="tile" style="width:${size}px;height:${size}px;--tb:${bg};--tc:${fg}" aria-hidden="true"><svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg></span>`;
 }
+
+/* ---------- extra units + favourites ---------- */
+const VOL_RE = /soup|sauce|yog|milk|cream|juice|honey|syrup|dressing|ketchup|mayo|custard|kefir|smoothie|stock|broth|vinegar|\boil\b|gravy|squash|cordial|wine|beer|cider|coffee|tea\b|water|cola|lemonade|soda|shake/i;
+export function canVolume(f) {
+  if (f.liquid) return true;
+  const c = catOf(f);
+  if (['drink', 'alcohol', 'oil'].indexOf(c) >= 0) return true;
+  if (['sweet', 'snack', 'bread', 'grain', 'meat', 'fish', 'egg', 'nut', 'pizza', 'cheese', 'fruit', 'recipe'].indexOf(c) >= 0) return false;
+  return VOL_RE.test(f.name || '');
+}
+function density(f) {
+  if (f.liquid) return 1;
+  if (catOf(f) === 'oil' || /\boil\b|butter/i.test(f.name || '')) return 0.92;
+  if (/honey|syrup|treacle/i.test(f.name || '')) return 1.4;
+  return 1.03;
+}
+const SOLID = [['g', 'Grams', 1], ['oz', 'Ounces', 28.35], ['kg', 'Kilograms', 1000], ['lb', 'Pounds', 453.6]];
+const VOL = [['ml', 'Millilitres', 1], ['l', 'Litres', 1000], ['tsp', 'Teaspoon (5 ml)', 5], ['tbsp', 'Tablespoon (15 ml)', 15], ['cup', 'Cup (250 ml)', 250], ['fl oz', 'Fluid ounces', 29.57]];
+export const MEASURES = ['g', 'ml', 'oz', 'fl oz', 'kg', 'lb', 'l', 'cup', 'tbsp', 'tsp'];
+export const ALL_UNITS = [['serving', 'Servings (slice, pot, pack…)'], ['g', 'Grams'], ['ml', 'Millilitres'], ['oz', 'Ounces'], ['fl oz', 'Fluid ounces'], ['cup', 'Cups'], ['tbsp', 'Tablespoons'], ['tsp', 'Teaspoons'], ['kg', 'Kilograms'], ['lb', 'Pounds'], ['l', 'Litres']];
+export const DEFAULT_FAVS = ['serving', 'g', 'ml'];
+export function isMeasure(u) { return !!u && MEASURES.indexOf(u.short) >= 0; }
+export function startAmt(u) { return u && (u.short === 'g' || u.short === 'ml') ? 100 : 1; }
+// Adds the standard weight / volume units a food is missing and puts favourite units first.
+export function withUnits(food, favs) {
+  favs = favs && favs.length ? favs : DEFAULT_FAVS;
+  const key = favs.join(',');
+  if (food._uk === key) return food;
+  const base = (food.units || []).slice(), has = s => base.some(u => u.short === s);
+  const want = s => ['kg', 'lb', 'l'].indexOf(s) < 0 || favs.indexOf(s) >= 0; // big units only if you've favourited them
+  if (!food.liquid) SOLID.forEach(([s, l, g]) => { if (!has(s) && want(s)) base.push({ label: l, short: s, g }); });
+  if (canVolume(food)) { const d = density(food); VOL.forEach(([s, l, g]) => { if (!has(s) && want(s)) base.push({ label: d === 1 ? l : l + ' ≈', short: s, g: +(g * d).toFixed(2) }); }); }
+  const rank = u => { const i = favs.indexOf(MEASURES.indexOf(u.short) >= 0 ? u.short : 'serving'); return i < 0 ? 99 : i; };
+  const units = base.map((u, i) => [u, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]);
+  return Object.assign({}, food, { units, _uk: key });
+}
