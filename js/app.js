@@ -187,7 +187,7 @@ function amountText(e) {
 
 
 /* ---------------- buddy (little man in the top bar) ---------------- */
-function buddyName() { const p = S.state.profile; return p && p.sex === 'f' ? 'Samira' : 'Samer'; }
+function buddyName() { const p = S.state.profile; return p && p.sex === 'f' ? 'Little Samira' : 'Little Samer'; }
 function buddyOn() { return S.state.settings.buddy !== false && !!S.state.profile; }
 function buddyMood(d, plan, isToday) {
   return BU.moodFor(d, plan, { ev: ui.buddyEv, isToday, waterGoal: S.state.profile.waterGoal || 8 });
@@ -356,9 +356,9 @@ VIEWS.foods = () => {
   const kicker = pick ? 'Adding an ingredient to ' + (ui.recipe.name || 'your recipe') : 'Adding to ' + (S.prettyDate(ui.date).toLowerCase() === 'today' ? '' : S.prettyDate(ui.date) + ' · ') + ui.meal;
   return `<div class="screen" ${ui.multi ? 'style="padding-bottom:170px"' : ''}>
     <div class="searchhead">
-      <div class="row" style="justify-content:space-between">${pick ? `<button type="button" class="iconbtn" data-a="backrecipe" aria-label="Back to recipe">${I.back({ s: 20, w: 2.4 })}</button>` : ''}<div class="grow"><div class="small muted ell" style="font-weight:700">${esc(kicker)}</div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px;white-space:nowrap">${pick ? 'Add ingredient' : 'Find a food'}</div></div>
-        <button type="button" class="pill ${ui.multi ? 'on' : 'unit'} press" data-a="multi" aria-pressed="${!!ui.multi}" style="display:flex;align-items:center;gap:5px;margin-right:6px">${ui.multi ? I.x({ s: 14, w: 2.6 }) + 'Cancel' : svg('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><path d="M3 17l3 3 5-5M14 18h7"/>', { s: 15 }) + '<span class="lg">Select several</span><span class="sm">Select</span>'}</button>
-        <button type="button" class="pill unit on press" data-a="country" aria-label="Food country: ${p.country === 'CA' ? 'Canada' : 'UK'}. Tap to switch" style="display:flex;align-items:center;gap:6px">${I.globe({ s: 16 })}${p.country === 'CA' ? 'Canada' : 'UK'}</button></div>
+      <div class="row" style="justify-content:space-between">${pick ? `<button type="button" class="iconbtn" data-a="backrecipe" aria-label="Back to recipe">${I.back({ s: 20, w: 2.4 })}</button>` : ''}<div class="grow htitle"><div class="small muted ell" style="font-weight:700">${esc(kicker)}</div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px;white-space:nowrap">${pick ? 'Add ingredient' : 'Find a food'}</div></div>
+        <div class="hbtns"><button type="button" class="pill ${ui.multi ? 'on' : 'unit'} press" data-a="multi" aria-pressed="${!!ui.multi}" style="display:flex;align-items:center;gap:5px;margin-right:6px">${ui.multi ? I.x({ s: 14, w: 2.6 }) + 'Cancel' : svg('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><path d="M3 17l3 3 5-5M14 18h7"/>', { s: 15 }) + '<span class="lg">Select several</span><span class="sm">Select</span>'}</button>
+        <button type="button" class="pill unit on press" data-a="country" aria-label="Food country: ${p.country === 'CA' ? 'Canada' : 'UK'}. Tap to switch" style="display:flex;align-items:center;gap:6px">${I.globe({ s: 16 })}<span class="lg">${p.country === 'CA' ? 'Canada' : 'UK'}</span><span class="sm">${p.country === 'CA' ? 'CA' : 'UK'}</span></button></div></div>
       <div class="row" style="gap:8px"><label class="searchbox">${I.search({ s: 18, c: 'var(--ink2)', w: 2.4 })}<input id="q" type="search" inputmode="search" autocomplete="off" enterkeyhint="search" placeholder="Search e.g. porridge, Heinz beans…" value="${esc(ui.q)}" data-in="q" aria-label="Search foods"></label>
         <button type="button" class="scan press" data-a="scan" aria-label="Scan a barcode">${I.scan({ c: '#fff' })}</button></div>
       <div class="tabs">${tabs.map(([k, l]) => `<button type="button" class="pill ${ui.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${l}</button>`).join('')}</div>
@@ -944,7 +944,7 @@ VIEWS.me = () => {
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Appearance</div>
         <div class="row" style="gap:6px">${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button type="button" class="pill unit ${(S.state.settings.theme || 'auto') === k ? 'on' : ''}" data-a="theme" data-v="${k}" style="flex:1">${l}</button>`).join('')}</div>
         <div class="small muted">Auto follows your phone's light or dark setting.</div></div>
-      <div class="card rise" style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${S.state.profile ? `<div class="buddyprev" aria-hidden="true">${BU.buddySvg(buddyProps('happy', 76))}</div>` : ''}<div class="grow"><div class="h2">${buddyName()}</div><div class="small muted">Your little man in the top bar. Tap ${S.state.profile && S.state.profile.sex === 'f' ? 'her' : 'him'} for a line, poke ${S.state.profile && S.state.profile.sex === 'f' ? 'her' : 'him'} three times if you dare. His shape follows your height and weigh-ins; his mood follows how healthy today's choices are.</div></div></div>
+      <div class="card rise" style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${S.state.profile ? `<div class="buddyprev" aria-hidden="true">${BU.buddySvg(buddyProps('happy', 76))}</div>` : ''}<div class="grow"><div class="h2">Your ${buddyName().replace('Little', 'little')}</div><div class="small muted">Your little man in the top bar. Tap ${S.state.profile && S.state.profile.sex === 'f' ? 'her' : 'him'} for a line, poke ${S.state.profile && S.state.profile.sex === 'f' ? 'her' : 'him'} three times if you dare. His shape follows your height and weigh-ins; his mood follows how healthy today's choices are.</div></div></div>
         <div class="row"><span class="grow small" style="font-size:14px">Show on Today</span><button type="button" class="switch ${S.state.settings.buddy !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.buddy !== false}" aria-label="Show ${buddyName()}" data-a="buddyset" data-k="buddy"></button></div>
         ${S.state.profile && S.state.profile.sex !== 'f' ? `<div class="row"><span class="grow small" style="font-size:14px">Moustache</span><button type="button" class="switch ${S.state.settings.tache !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.tache !== false}" aria-label="Moustache" data-a="buddyset" data-k="tache"></button></div>` : ''}
         <div class="row"><span class="grow small" style="font-size:14px">Shirt</span><div class="row" style="gap:8px">${[['#C8553D', 'Brick red'], ['#2E8A82', 'Teal'], ['#3B5BA9', 'Blue'], ['#E0A43A', 'Mustard']].map(([c, l]) => `<button type="button" class="swatch press ${(S.state.settings.shirt || '#C8553D') === c ? 'on' : ''}" style="background:${c}" data-a="buddyset" data-k="shirt" data-v="${c}" aria-label="${l} shirt" aria-pressed="${(S.state.settings.shirt || '#C8553D') === c}"></button>`).join('')}</div></div></div>
@@ -1817,8 +1817,8 @@ document.addEventListener('click', e => {
   const key = t.matches(BOUNCE) ? bounceKey(t) : null;
   const from = !t.classList.contains('on') && t.matches(GLIDE) ? glideFrom(t) : null;
   if (fn) fn(t.dataset, t, e);
-  if (key) boing(key, t);
-  if (from && key) glideTo(from, key);
+  const glided = from && key ? glideTo(from, key) : false;
+  if (key && !glided) boing(key, t);
 });
 // The selected bubble glides from the old choice to the new one.
 const GLIDE = '.pill, .seg button';
@@ -1828,23 +1828,31 @@ function glideFrom(t) {
   return prev ? prev.getBoundingClientRect() : null;
 }
 function glideTo(r0, key) {
-  requestAnimationFrame(() => {
-    let el = null; try { el = document.querySelector(key); } catch (e) {}
-    if (!el || !el.classList.contains('on')) return;
-    const par = el.parentElement, r1 = el.getBoundingClientRect(), pr = par.getBoundingClientRect();
-    if (Math.abs(r1.top - r0.top) > 160 || !r1.width) return;
-    const cs = getComputedStyle(el), g = document.createElement('span');
-    g.className = 'glider'; g.setAttribute('aria-hidden', 'true');
-    const at = r => ({ left: (r.left - pr.left + par.scrollLeft) + 'px', top: (r.top - pr.top + par.scrollTop) + 'px', width: r.width + 'px', height: r.height + 'px' });
-    Object.assign(g.style, at(r0), { background: cs.backgroundColor, borderRadius: cs.borderRadius, boxShadow: cs.boxShadow, border: cs.borderTopWidth + ' solid ' + cs.borderTopColor });
-    par.classList.add('glidegrp'); par.insertBefore(g, par.firstChild);
-    el.classList.add('gliding');
-    requestAnimationFrame(() => requestAnimationFrame(() => Object.assign(g.style, at(r1))));
-    let fin = false;
-    const done = () => { if (fin) return; fin = true; g.remove(); el.classList.remove('gliding'); if (!par.querySelector('.glider')) par.classList.remove('glidegrp'); };
-    g.addEventListener('transitionend', e => { if (e.propertyName === 'left') done(); });
-    setTimeout(done, 480);
-  });
+  // Runs straight after the screen redraws (same frame), so there's never a frame with two highlights.
+  let el = null; try { el = document.querySelector(key); } catch (e) {}
+  if (!el || !el.classList.contains('on')) return false;
+  const par = el.parentElement, r1 = el.getBoundingClientRect(), pr = par.getBoundingClientRect();
+  if (Math.abs(r1.top - r0.top) > 160 || !r1.width || (Math.abs(r1.left - r0.left) < 1 && Math.abs(r1.top - r0.top) < 1)) return false;
+  const cs = getComputedStyle(el), g = document.createElement('span');
+  g.className = 'glider'; g.setAttribute('aria-hidden', 'true');
+  const at = r => 'translate(' + (r.left - pr.left + par.scrollLeft - par.clientLeft) + 'px,' + (r.top - pr.top + par.scrollTop - par.clientTop) + 'px)';
+  Object.assign(g.style, { width: r0.width + 'px', height: r0.height + 'px', transform: at(r0), background: cs.backgroundColor, borderRadius: cs.borderRadius, boxShadow: cs.boxShadow, border: cs.borderTopWidth + ' solid ' + cs.borderTopColor });
+  par.classList.add('glidegrp'); par.insertBefore(g, par.firstChild);
+  el.classList.add('gliding');
+  void g.offsetWidth;
+  g.classList.add('go');
+  Object.assign(g.style, { width: r1.width + 'px', height: r1.height + 'px', transform: at(r1) });
+  let fin = false;
+  const done = () => {
+    if (fin) return; fin = true;
+    el.style.transition = 'none';
+    el.classList.remove('gliding'); g.remove();
+    if (!par.querySelector('.glider')) par.classList.remove('glidegrp');
+    requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = ''; }));
+  };
+  g.addEventListener('transitionend', e => { if (e.propertyName === 'transform') done(); });
+  setTimeout(done, 520);
+  return true;
 }
 // Little springy bounce on chips, tabs and toggles, re-found after a re-render so it always plays.
 const BOUNCE = '.pill, .seg button, .swatch, .nav a, .mcol2, .switch, .selchip-main, .cf-icons button, .step, .iconbtn, .scell';
