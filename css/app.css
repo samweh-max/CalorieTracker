@@ -132,7 +132,7 @@ a { color: var(--accent-ink); }
 .bar .fl.grow { animation: barGrow .8s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes barGrow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
 .bar .vl { width: 78px; text-align: right; font-size: 13px; font-weight: 600; color: var(--ink2); }
-.cups { display: flex; justify-content: space-between; flex-wrap: wrap; }
+.cups { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); justify-items: center; row-gap: 4px; }
 .cup { position: relative; border: 0; background: transparent; padding: 0; width: 38px; height: 46px; display: flex; align-items: center; justify-content: center; transition: transform .12s; }
 .cup:active { transform: scale(.86); }
 .cup.popnow svg { animation: pop .3s ease-out; }
@@ -519,3 +519,9 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
 .glidegrp.week > button:not(.glider) { position: static; z-index: auto; }
 .glidegrp.week > .glider { z-index: 1; }
 .glidegrp.week > button > * { position: relative; z-index: 2; }
+
+/* extra water: a faint "+" glass appears only once the goal is full */
+.cup.more { opacity: .55; width: 30px; animation: moreIn .4s ease-out backwards; transition: opacity .2s; }
+.cup.more:hover, .cup.more:active { opacity: .9; }
+@keyframes moreIn { from { opacity: 0; transform: scale(.6); } to { opacity: .55; transform: none; } }
+.cup.extra svg { transform: scale(.92); transform-origin: bottom center; }

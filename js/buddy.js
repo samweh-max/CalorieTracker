@@ -350,7 +350,7 @@ export function contextLines(c) {
 // What to say right after something happened.
 function eventLine(mood, c) {
   const es = c.entries || [], last = es[es.length - 1];
-  if (mood === 'splash') return c.water >= c.goal ? null : 'Glug! ' + c.water + ' of ' + c.goal + ' cups. ' + (c.goal - c.water === 1 ? 'One more!' : (c.goal - c.water) + ' to go.');
+  if (mood === 'splash') return c.water > c.goal ? 'Bonus cup! ' + c.water + ' cups today. Overachiever.' : c.water >= c.goal ? null : 'Glug! ' + c.water + ' of ' + c.goal + ' cups. ' + (c.goal - c.water === 1 ? 'One more!' : (c.goal - c.water) + ' to go.');
   if (mood === 'dance') return 'Cup number ' + c.goal + '! Water goal done. Dabke time!';
   if (mood === 'proud') return c.streak >= 2 ? 'Day done! ' + c.streak + '-day streak. Tell the family WhatsApp group.' : null;
   if (last && ['flex', 'love', 'sugar', 'sad', 'happy', 'shock', 'chef'].indexOf(mood) >= 0) {

@@ -198,6 +198,35 @@ function goDay(k) {
   ui.date = k; render(); ui.wkSlide = null;
   if (r0) glideTo(r0, '#weekstrip [data-k="' + k + '"]');
 }
+function setWater(target, el) {
+  const day = S.day(ui.date), before = day.water || 0, p = S.state.profile, goal = p.waterGoal || 8;
+  day.water = before === target ? target - 1 : target; S.save();
+  const box = document.querySelector('.cups'), up = day.water > before;
+  const sameShape = Math.max(goal, day.water) === Math.max(goal, before) && (day.water >= goal) === (before >= goal);
+  if (box && !sameShape) box.innerHTML = cupsHtml(day.water, goal, up ? day.water - 1 : -1);
+  else document.querySelectorAll('.cups .cup[data-a="cup"]').forEach((c, j) => {
+    const on = j < day.water;
+    if (on !== (j < before)) { c.innerHTML = cupSvg(on, j, on); c.classList.toggle('on', on); c.setAttribute('aria-label', 'Cup ' + (j + 1) + (on ? ', drunk' : '')); }
+  });
+  const tgt = up ? document.querySelector('.cups .cup[data-i="' + (day.water - 1) + '"]') : el;
+  if (tgt && tgt.isConnected) {
+    tgt.classList.remove('popnow'); void tgt.offsetWidth; tgt.classList.add('popnow');
+    if (up && !REDUCED()) { const sp = document.createElement('span'); sp.className = 'splash'; sp.innerHTML = '<i></i><i></i><i></i><i></i><i></i>'; tgt.appendChild(sp); setTimeout(() => sp.remove(), 700); }
+  }
+  const lbl = document.getElementById('waterlbl');
+  if (lbl) lbl.textContent = day.water + ' of ' + goal + ' cups · ' + ((day.water * (p.cupMl || 250)) / 1000).toFixed(2).replace(/0$/, '') + ' L';
+  if (up) buddyEvent(day.water === goal ? 'dance' : 'splash');
+  refreshBuddy(up);
+  celebrate(day.water === goal && up ? 3100 : 300);
+  if (day.water === goal && up) toast('Water goal hit!', 'That\'s ' + ((goal * (p.cupMl || 250)) / 1000) + ' litres. You\'re basically a cucumber.', 'good');
+}
+// Water glasses: the goal's worth, plus any extras; once the goal is full a faint "+" glass lets you keep going.
+function cupsHtml(water, goal, fresh) {
+  const n = Math.max(goal, water);
+  let h = Array.from({ length: n }, (_, i) => `<button type="button" class="cup ${i < water ? 'on' : ''} ${i >= goal ? 'extra' : ''}" data-a="cup" data-i="${i}" aria-label="Cup ${i + 1}${i < water ? ', drunk' : ''}${i >= goal ? ' (extra)' : ''}">${cupSvg(i < water, i, fresh === i)}</button>`).join('');
+  if (water >= goal) h += `<button type="button" class="cup more" data-a="cupmore" aria-label="Add another cup of water"><svg width="22" height="28" viewBox="0 0 32 40" aria-hidden="true"><path d="M5 5h22l-2.6 29.2a3 3 0 0 1-3 2.8H10.6a3 3 0 0 1-3-2.8z" fill="none" stroke="var(--dim2)" stroke-width="2" stroke-dasharray="3.2 2.6"/><path d="M16 15v10M11 20h10" stroke="var(--water-line)" stroke-width="2.4" stroke-linecap="round"/></svg></button>`;
+  return h;
+}
 function amountText(e) {
   const u = e.food.units[e.unit] || { short: 'g' };
   const plain = WEIGHTY.indexOf(u.short) >= 0;
@@ -260,7 +289,7 @@ VIEWS.today = () => {
   const HEX = { 'var(--prot)': '#6366F1', 'var(--carb)': '#F97316', 'var(--fat)': '#EAB308', 'var(--fib)': '#10B981', 'var(--over)': '#DC2626' };
   const bar = (nm, cur, tgt, col) => { const c = cur > tgt * 1.05 && nm !== 'Protein' && nm !== 'Fibre' ? 'var(--over)' : col, w = clamp(cur / tgt * 100, 0, 100).toFixed(1) + '%', grow = ui.barsPrev[nm] !== w;
     return `<div class="bar"><span class="nm">${nm}</span><div class="tr"><div class="fl ${grow ? 'grow' : ''}" style="width:${w};background-color:${HEX[c]};background-color:${c}"></div></div><span class="vl">${fmt(cur)} / ${tgt}g</span></div>`; };
-  const cups = Array.from({ length: p.waterGoal || 8 }, (_, i) => `<button type="button" class="cup ${i < d.water ? 'on' : ''}" data-a="cup" data-i="${i}" aria-label="Cup ${i + 1}${i < d.water ? ', drunk' : ''}">${cupSvg(i < d.water, i)}</button>`).join('');
+  const cups = cupsHtml(d.water || 0, p.waterGoal || 8);
   const mealsHtml = S.meals().map(m => {
     const es = d.entries.filter(e => e.meal === m);
     const kc = es.reduce((s, e) => s + e.n.kcal, 0);
@@ -1584,24 +1613,8 @@ const A = {
   // today
   day: d => { ui.date = d.k; render(); },
   dayshift: d => { const k = S.addDays(ui.date, +d.n); if (k <= S.todayKey()) goDay(k); },
-  cup: (d, el) => {
-    const day = S.day(ui.date), i = +d.i, before = day.water;
-    day.water = day.water === i + 1 ? i : i + 1; S.save();
-    const p = S.state.profile;
-    document.querySelectorAll('.cup').forEach((c, j) => {
-      const on = j < day.water;
-      if (on !== (j < before)) { c.innerHTML = cupSvg(on, j, on); c.classList.toggle('on', on); c.setAttribute('aria-label', 'Cup ' + (j + 1) + (on ? ', drunk' : '')); }
-    });
-    el.classList.remove('popnow'); void el.offsetWidth; el.classList.add('popnow');
-    if (day.water > before && !matchMedia('(prefers-reduced-motion: reduce)').matches) { const sp = document.createElement('span'); sp.className = 'splash'; sp.innerHTML = '<i></i><i></i><i></i><i></i><i></i>'; el.appendChild(sp); setTimeout(() => sp.remove(), 700); }
-    const lbl = document.getElementById('waterlbl');
-    if (lbl) lbl.textContent = day.water + ' of ' + (p.waterGoal || 8) + ' cups · ' + ((day.water * (p.cupMl || 250)) / 1000).toFixed(2).replace(/0$/, '') + ' L';
-    if (day.water > before) buddyEvent(day.water === (p.waterGoal || 8) ? 'dance' : 'splash');
-    refreshBuddy(day.water > before);
-    const goal = S.state.profile.waterGoal || 8;
-    celebrate(day.water === goal ? 3100 : 300);
-    if (day.water === goal) toast('Water goal hit!', 'That\'s ' + ((goal * (S.state.profile.cupMl || 250)) / 1000) + ' litres. You\'re basically a cucumber.', 'good');
-  },
+  cup: (d, el) => setWater(+d.i + 1, el),
+  cupmore: (d, el) => setWater((S.day(ui.date).water || 0) + 1, el),
   addto: d => { ui.meal = d.meal; ui.view = 'foods'; ui.q = ''; ui.tab = 'all'; ui.online = { q: '', status: 'idle', items: [], cnf: [] }; render(); window.scrollTo(0, 0); },
   entry: (d, el) => {
     if (el && el._open) { el.style.transform = ''; el._open = false; return; }
