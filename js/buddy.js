@@ -50,6 +50,7 @@ const TPL = `<svg width="{{w}}" height="{{h}}" aria-hidden="true" focusable="fal
 <g class="{{headAnim}}">
 <path d="{{hairBackD}}" fill="{{hairCol}}" class="k-inkf"></path>
 <path d="M33 62 q-9 -3 -9 7 q1 10 10 8" fill="#F3D2B3" class="k-inkf"></path>
+<g opacity="{{earOp}}"><circle cx="27" cy="81" r="3.6" fill="#F5B82E" class="k-inkf"></circle><circle cx="27" cy="89" r="2.6" fill="#F5B82E" class="k-inkf"></circle></g>
 <path d="{{headD}}" fill="#F3D2B3" class="k-inkf"></path>
 <path d="{{jowlD}}" class="k-thin" opacity=".7"></path>
 <ellipse cx="50" cy="76" rx="6" ry="3.5" fill="#E8907E" opacity="{{blushOp}}"></ellipse>
@@ -64,6 +65,7 @@ const TPL = `<svg width="{{w}}" height="{{h}}" aria-hidden="true" focusable="fal
 <circle cx="{{pupRx}}" cy="{{pupY2}}" r="{{pupR}}" class="k-blk"></circle>
 </g>
 <path d="{{lidsD}}" fill="#F3D2B3" class="k-inkf" opacity="{{lidsOp}}"></path>
+<path d="M50 51 l-4 -3 M53 48.6 l-2.4 -4 M74 50 l-3 -3.4 M77 47.8 l-1.6 -4" class="k-ink" style="stroke-width:2" opacity="{{lashOp}}"></path>
 <g opacity="{{heartEyesOp}}" class="{{heartEyesAnim}}"><path d="M58 54c-2.6-4.4-10-3.2-10 2.4 0 4.2 5.4 7.4 10 11.6 4.6-4.2 10-7.4 10-11.6 0-5.6-7.4-6.8-10-2.4z" fill="#E2483D" class="k-inkf"></path><path d="M82 53c-2.4-4-9-2.9-9 2.2 0 3.8 4.9 6.7 9 10.5 4.1-3.8 9-6.7 9-10.5 0-5.1-6.6-6.2-9-2.2z" fill="#E2483D" class="k-inkf"></path></g>
 <path d="{{spiralD}}" class="k-thin" opacity="{{spiralOp}}"></path>
 <path d="{{bagsD}}" class="k-thin" opacity="{{bagsOp}}"></path>
@@ -183,7 +185,7 @@ function vals(props) {
     var BODYANIM = { love: 'k-a-bob', shock: 'k-a-shake', dance: 'k-a-hop', chef: 'k-a-nod', hungry: 'k-a-droop', neutral: 'k-a-nod', happy: 'k-a-bob', proud: 'k-a-hop', flex: 'k-a-nod', splash: 'k-a-hop', thirsty: 'k-a-droop', sugar: 'k-a-shake', coma: 'k-a-sway', sad: 'k-a-droop', sleepy: 'k-a-sway' };
     var L = { love: 'In love', shock: 'Shocked', dance: 'Dancing', chef: 'Chef', hungry: 'Hungry', neutral: 'Calm', happy: 'Happy', proud: 'Proud', flex: 'Veggie power', splash: 'Refreshed', thirsty: 'Thirsty', sugar: 'Sugar rush', coma: 'Food coma', sad: 'Glum', sleepy: 'Sleepy' };
     return {
-      w: Math.round(size * 140 / 190), h: size, label: (sex === 'm' ? 'Man' : 'Woman') + ', ' + L[mood], stillCls: animate ? '' : 'k-still',
+      w: Math.round(size * 140 / 190), h: size, label: (sex === 'm' ? 'Samer' : 'Samira') + ', ' + L[mood], stillCls: animate ? '' : 'k-still',
       boil: animate ? 1.6 : 1.2,
       scaleT: 'translate(70 184) scale(' + f(hs) + ') translate(-70 -184)', shadowRx: f(26 + 18 * w),
       bodyAnim: animate ? BODYANIM[mood] : '', headAnim: '', bellyAnim: animate && mood === 'coma' ? 'k-belly' : '',
@@ -211,6 +213,7 @@ function vals(props) {
       starsOp: mood === 'proud' || mood === 'chef' ? 1 : 0, zzzOp: (mood === 'coma' || mood === 'sleepy') ? 1 : 0, dropsOp: mood === 'splash' ? 1 : 0,
       sweatOp: (mood === 'thirsty' || mood === 'sugar') ? 1 : 0, linesOp: mood === 'sugar' || mood === 'shock' ? 1 : 0, boingOp: mood === 'flex' ? 1 : 0,
       heartOp: mood === 'happy' ? 1 : 0, cloudOp: mood === 'sad' ? 1 : 0,
+      lashOp: sex === 'f' && mood !== 'love' ? 1 : 0, earOp: sex === 'f' ? 1 : 0,
       heartEyesOp: mood === 'love' ? 1 : 0, heartEyesAnim: animate && mood === 'love' ? 'k-pump' : '', heartsOp: mood === 'love' ? 1 : 0, exclOp: mood === 'shock' ? 1 : 0, notesOp: mood === 'dance' ? 1 : 0, hatOp: mood === 'chef' ? 1 : 0, growlOp: mood === 'hungry' ? 1 : 0,
       appleOp: mood === 'love' ? 1 : 0, appleD: 'M' + f(hx + 1) + ' ' + f(hy - 14) + ' c-3 -3 -9 -2 -9 4 c0 5 4 9 9 8 c5 1 9 -3 9 -8 c0 -6 -6 -7 -9 -4 z', appleLeaf: 'M' + f(hx + 2) + ' ' + f(hy - 15) + ' q5 -5 9 -1 q-5 4 -9 1 z'
     };
@@ -240,6 +243,14 @@ export const LINES = {
   dance: ['Water goal! Dabke time!', 'Look at me go! Fully hydrated!', 'Eight cups! I am basically a river.', 'Shake it like a bottle of ayran!', 'Hands up if you’re hydrated!', 'Party in my kidneys and everyone’s invited.'],
   chef: ['Recipe saved. Somebody give me a cooking show.', 'Homemade! Mama would approve. Maybe.', 'Chef’s kiss. Mwah.', 'Gordon Ramsay could never.', 'From the pot to the app. Beautiful.', 'Cooked with love and a lot of garlic.'],
   hungry: ['Is it lunch? It feels like lunch.', 'My stomach is speaking Arabic and it’s angry.', 'Grrr. That was my belly, not me.', 'You haven’t fed me in ages! Log something!', 'I could eat a whole sheep. A small one.', 'Starving. Okay, slightly peckish. But still.']
+};
+const FEM = {
+  'I am basically a raisin with a moustache.': 'I am basically a raisin in earrings.',
+  'Even my moustache is thirsty.': 'Even my eyelashes are thirsty.',
+  'I’m just standing here. Looking handsome.': 'I’m just standing here. Looking fabulous.',
+  'Someone call my mother. Actually, I will.': 'Someone call my mother. Actually, I will. For an hour.',
+  'I could eat a whole sheep. A small one.': 'I could eat a whole sheep. A small one. With rice.',
+  'Juicy, sweet, healthy. Like me.': 'Juicy, sweet, healthy. Like me, obviously.'
 };
 export const POKE = ['Oi! Personal space!', 'Stop poking, I’m digesting.', 'That tickles, habibi!', 'One more poke and I’m calling my mother.', 'Do I look like a button to you?', 'Hey! I bruise like a peach.'];
 
@@ -297,7 +308,8 @@ export function moodFor(day, plan, opts) {
   return 'neutral';
 }
 
-export function lineFor(mood, seed) {
-  const l = LINES[mood] || LINES.neutral;
+export function lineFor(mood, seed, sex) {
+  let l = LINES[mood] || LINES.neutral;
+  if (sex === 'f') l = l.map(x => FEM[x] || x);
   return l[Math.abs(seed | 0) % l.length];
 }

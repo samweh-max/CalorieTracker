@@ -441,15 +441,29 @@ a { color: var(--accent-ink); }
 /* ---------- page transitions (CSS only, never blocks taps) ---------- */
 .navpill { position: absolute; top: 6px; bottom: 6px; width: calc((100% - 12px) / 5); left: calc(6px + var(--to) * (100% - 12px) / 5); border-radius: 16px; background: var(--accent-soft); animation: navSlide .38s cubic-bezier(.3,1.35,.5,1) both; }
 @keyframes navSlide { from { left: calc(6px + var(--from) * (100% - 12px) / 5); } to { left: calc(6px + var(--to) * (100% - 12px) / 5); } }
-.pagein-r .screen > :not(.nav):not(#multibar) { animation: pageInR .32s cubic-bezier(.2,.8,.2,1) both; }
-.pagein-l .screen > :not(.nav):not(#multibar) { animation: pageInL .32s cubic-bezier(.2,.8,.2,1) both; }
+.pagein-r .screen > :not(.nav):not(#multibar) { animation: pageInR .42s cubic-bezier(.32,.72,0,1) both; }
+.pagein-l .screen > :not(.nav):not(#multibar) { animation: pageInL .42s cubic-bezier(.32,.72,0,1) both; }
 .pagein-up .screen > :not(.nav):not(#multibar) { animation: pageInUp .32s cubic-bezier(.2,.8,.2,1) both; }
-@keyframes pageInR { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
-@keyframes pageInL { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+@keyframes pageInR { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes pageInL { from { transform: translateX(-100%); } to { transform: none; } }
 @keyframes pageInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 .nav a.on svg { animation: navIcon .45s cubic-bezier(.3,1.6,.5,1) both; }
 @keyframes navIcon { 0% { transform: scale(.7) translateY(3px); } 100% { transform: none; } }
 /* springy bounce for chips & toggles */
 .boing { animation: boing .42s cubic-bezier(.3,1.5,.5,1) both !important; }
 @keyframes boing { 0% { transform: scale(1); } 25% { transform: scale(.9); } 60% { transform: scale(1.07); } 82% { transform: scale(.98); } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .navpill, .nav a.on svg, .pagein-r .screen > *, .pagein-l .screen > *, .pagein-up .screen > *, .boing { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .navpill, .nav a.on svg, .pomove, .pagein-r .screen > *, .pagein-l .screen > *, .pagein-up .screen > *, .boing { animation: none !important; } }
+
+html { overflow-x: hidden; }
+.pageout { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+#app { position: relative; z-index: 1; }
+.pomove { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); }
+.pomove > .screen { position: absolute; top: 0; left: 0; right: 0; }
+.pageout-r > .pomove { animation: pageOutR .42s cubic-bezier(.32,.72,0,1) both; }
+.pageout-l > .pomove { animation: pageOutL .42s cubic-bezier(.32,.72,0,1) both; }
+@keyframes pageOutR { from { transform: none; } to { transform: translateX(-100%); } }
+@keyframes pageOutL { from { transform: none; } to { transform: translateX(100%); } }
+.glider { position: absolute; z-index: 0; pointer-events: none; box-sizing: border-box; transition: left .32s cubic-bezier(.3,1.25,.5,1), top .32s cubic-bezier(.3,1.25,.5,1), width .32s cubic-bezier(.3,1.25,.5,1), height .32s cubic-bezier(.3,1.25,.5,1); }
+.gliding { background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+.glidegrp { position: relative; } .glidegrp > :not(.glider) { position: relative; z-index: 1; }
+.glidegrp > .pill.unit:not(.on) { background: transparent; }

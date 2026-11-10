@@ -129,6 +129,20 @@ function padShown(id) { return pad && pad.id === id && !pad.fresh ? (pad.buf ===
 
 /* ---------------- rendering ---------------- */
 const NAV_ORDER = ['today', 'dash', 'foods', 'weight', 'me'];
+const REDUCED = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+// The old page slides away while the new one slides in. It's only a picture of the old page, so it never catches taps.
+function slideOut(dir) {
+  const old = $app.querySelector('.screen'); if (!old) return;
+  document.querySelectorAll('.pageout').forEach(x => x.remove());
+  const c = old.cloneNode(true);
+  c.querySelectorAll('.nav, #multibar, [id]').forEach(x => { if (x.classList.contains('nav') || x.id === 'multibar') x.remove(); else x.removeAttribute('id'); });
+  const wrap = document.createElement('div');
+  wrap.className = 'pageout pageout-' + dir; wrap.setAttribute('aria-hidden', 'true');
+  c.style.transform = 'translateY(' + (-window.scrollY) + 'px)';
+  const mv = document.createElement('div'); mv.className = 'pomove'; mv.appendChild(c);
+  wrap.appendChild(mv); document.body.appendChild(wrap);
+  setTimeout(() => wrap.remove(), 420);
+}
 function render() {
   const anim = ui.view !== ui.lastView;
   // page change: slide in from the side you're heading to (nav order), never blocking taps
@@ -136,6 +150,7 @@ function render() {
   const dir = !anim || ui.lastView == null ? '' : a0 < 0 || a1 < 0 ? 'up' : a1 > a0 ? 'r' : 'l';
   ui.navFrom = anim && a0 >= 0 ? a0 : (ui.navFrom != null && !anim ? a1 : a1);
   ui.lastView = ui.view;
+  if ((dir === 'l' || dir === 'r') && !REDUCED()) slideOut(dir);
   $app.className = anim ? 'anim' + (dir ? ' pagein-' + dir : '') : '';
   $app.innerHTML = (VIEWS[ui.view] || VIEWS.today)();
   afterRender[ui.view] && afterRender[ui.view](anim);
@@ -172,6 +187,7 @@ function amountText(e) {
 
 
 /* ---------------- buddy (little man in the top bar) ---------------- */
+function buddyName() { const p = S.state.profile; return p && p.sex === 'f' ? 'Samira' : 'Samer'; }
 function buddyOn() { return S.state.settings.buddy !== false && !!S.state.profile; }
 function buddyMood(d, plan, isToday) {
   return BU.moodFor(d, plan, { ev: ui.buddyEv, isToday, waterGoal: S.state.profile.waterGoal || 8 });
@@ -183,7 +199,7 @@ function buddyProps(mood, size) {
 }
 function buddyHtml(d, plan, isToday) {
   const mood = buddyMood(d, plan, isToday);
-  return `<button type="button" class="buddy press" id="buddy" data-a="buddy" data-mood="${mood}" aria-label="Samer looks ${BU.MOOD_NAMES[mood]}. Tap him.">${BU.buddySvg(buddyProps(mood))}</button>`;
+  return `<button type="button" class="buddy press" id="buddy" data-a="buddy" data-mood="${mood}" aria-label="${buddyName()} looks ${BU.MOOD_NAMES[mood]}. Tap ${S.state.profile.sex === 'f' ? 'her' : 'him'}.">${BU.buddySvg(buddyProps(mood))}</button>`;
 }
 let buddyTimer = null;
 function buddyEvent(mood) {
@@ -195,9 +211,9 @@ function refreshBuddy(poke, say) {
   const b = document.getElementById('buddy'); if (!b || ui.view !== 'today') return;
   const d = S.peekDay(ui.date), plan = S.plan(), isToday = ui.date === S.todayKey();
   const mood = buddyMood(d, plan, isToday);
-  if (mood !== b.dataset.mood) { b.innerHTML = BU.buddySvg(buddyProps(mood)); b.dataset.mood = mood; b.setAttribute('aria-label', 'Samer looks ' + BU.MOOD_NAMES[mood] + '. Tap him.'); }
+  if (mood !== b.dataset.mood) { b.innerHTML = BU.buddySvg(buddyProps(mood)); b.dataset.mood = mood; b.setAttribute('aria-label', buddyName() + ' looks ' + BU.MOOD_NAMES[mood] + '. Tap ' + (S.state.profile.sex === 'f' ? 'her' : 'him') + '.'); }
   const bub = document.getElementById('bubble');
-  if (bub) { bub.textContent = say || BU.lineFor(mood, ui.buddySeed + parseInt(ui.date.slice(-2), 10)); bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop'); }
+  if (bub) { bub.textContent = say || BU.lineFor(mood, ui.buddySeed + parseInt(ui.date.slice(-2), 10), S.state.profile.sex); bub.classList.remove('pop'); void bub.offsetWidth; bub.classList.add('pop'); }
   if (poke) { b.classList.remove('poke'); void b.offsetWidth; b.classList.add('poke'); }
 }
 
@@ -214,7 +230,7 @@ VIEWS.today = () => {
   const greet = (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + (p.name ? ', ' + esc(p.name) : '');
   const wk = weekKeys(k);
   const streak = S.streak();
-  const buddyLine = buddyOn() ? BU.lineFor(buddyMood(d, plan, isToday), ui.buddySeed + parseInt(k.slice(-2), 10)) : '';
+  const buddyLine = buddyOn() ? BU.lineFor(buddyMood(d, plan, isToday), ui.buddySeed + parseInt(k.slice(-2), 10), S.state.profile.sex) : '';
   const HEX = { 'var(--prot)': '#6366F1', 'var(--carb)': '#F97316', 'var(--fat)': '#EAB308', 'var(--fib)': '#10B981', 'var(--over)': '#DC2626' };
   const bar = (nm, cur, tgt, col) => { const c = cur > tgt * 1.05 && nm !== 'Protein' && nm !== 'Fibre' ? 'var(--over)' : col, w = clamp(cur / tgt * 100, 0, 100).toFixed(1) + '%', grow = ui.barsPrev[nm] !== w;
     return `<div class="bar"><span class="nm">${nm}</span><div class="tr"><div class="fl ${grow ? 'grow' : ''}" style="width:${w};background-color:${HEX[c]};background-color:${c}"></div></div><span class="vl">${fmt(cur)} / ${tgt}g</span></div>`; };
@@ -928,8 +944,8 @@ VIEWS.me = () => {
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Appearance</div>
         <div class="row" style="gap:6px">${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([k, l]) => `<button type="button" class="pill unit ${(S.state.settings.theme || 'auto') === k ? 'on' : ''}" data-a="theme" data-v="${k}" style="flex:1">${l}</button>`).join('')}</div>
         <div class="small muted">Auto follows your phone's light or dark setting.</div></div>
-      <div class="card rise" style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${S.state.profile ? `<div class="buddyprev" aria-hidden="true">${BU.buddySvg(buddyProps('happy', 76))}</div>` : ''}<div class="grow"><div class="h2">Samer</div><div class="small muted">Your little man in the top bar. Tap him for a line, poke him three times if you dare. His shape follows your height and weigh-ins; his mood follows how healthy today's choices are.</div></div></div>
-        <div class="row"><span class="grow small" style="font-size:14px">Show on Today</span><button type="button" class="switch ${S.state.settings.buddy !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.buddy !== false}" aria-label="Show Samer" data-a="buddyset" data-k="buddy"></button></div>
+      <div class="card rise" style="display:flex;flex-direction:column;gap:12px"><div class="row" style="gap:12px">${S.state.profile ? `<div class="buddyprev" aria-hidden="true">${BU.buddySvg(buddyProps('happy', 76))}</div>` : ''}<div class="grow"><div class="h2">${buddyName()}</div><div class="small muted">Your little man in the top bar. Tap ${S.state.profile && S.state.profile.sex === 'f' ? 'her' : 'him'} for a line, poke ${S.state.profile && S.state.profile.sex === 'f' ? 'her' : 'him'} three times if you dare. His shape follows your height and weigh-ins; his mood follows how healthy today's choices are.</div></div></div>
+        <div class="row"><span class="grow small" style="font-size:14px">Show on Today</span><button type="button" class="switch ${S.state.settings.buddy !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.buddy !== false}" aria-label="Show ${buddyName()}" data-a="buddyset" data-k="buddy"></button></div>
         ${S.state.profile && S.state.profile.sex !== 'f' ? `<div class="row"><span class="grow small" style="font-size:14px">Moustache</span><button type="button" class="switch ${S.state.settings.tache !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.tache !== false}" aria-label="Moustache" data-a="buddyset" data-k="tache"></button></div>` : ''}
         <div class="row"><span class="grow small" style="font-size:14px">Shirt</span><div class="row" style="gap:8px">${[['#C8553D', 'Brick red'], ['#2E8A82', 'Teal'], ['#3B5BA9', 'Blue'], ['#E0A43A', 'Mustard']].map(([c, l]) => `<button type="button" class="swatch press ${(S.state.settings.shirt || '#C8553D') === c ? 'on' : ''}" style="background:${c}" data-a="buddyset" data-k="shirt" data-v="${c}" aria-label="${l} shirt" aria-pressed="${(S.state.settings.shirt || '#C8553D') === c}"></button>`).join('')}</div></div></div>
       <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Food search country</div><div class="row" style="gap:6px">${opt('country', 'UK', 'United Kingdom')}${opt('country', 'CA', 'Canada')}</div>
@@ -1799,9 +1815,37 @@ document.addEventListener('click', e => {
   if (!t || t.disabled) return;
   const fn = A[t.dataset.a];
   const key = t.matches(BOUNCE) ? bounceKey(t) : null;
+  const from = !t.classList.contains('on') && t.matches(GLIDE) ? glideFrom(t) : null;
   if (fn) fn(t.dataset, t, e);
   if (key) boing(key, t);
+  if (from && key) glideTo(from, key);
 });
+// The selected bubble glides from the old choice to the new one.
+const GLIDE = '.pill, .seg button';
+function glideFrom(t) {
+  const par = t.parentElement; if (!par || REDUCED()) return null;
+  const prev = Array.prototype.find.call(par.children, c => c !== t && c.classList.contains('on') && c.matches(GLIDE));
+  return prev ? prev.getBoundingClientRect() : null;
+}
+function glideTo(r0, key) {
+  requestAnimationFrame(() => {
+    let el = null; try { el = document.querySelector(key); } catch (e) {}
+    if (!el || !el.classList.contains('on')) return;
+    const par = el.parentElement, r1 = el.getBoundingClientRect(), pr = par.getBoundingClientRect();
+    if (Math.abs(r1.top - r0.top) > 160 || !r1.width) return;
+    const cs = getComputedStyle(el), g = document.createElement('span');
+    g.className = 'glider'; g.setAttribute('aria-hidden', 'true');
+    const at = r => ({ left: (r.left - pr.left + par.scrollLeft) + 'px', top: (r.top - pr.top + par.scrollTop) + 'px', width: r.width + 'px', height: r.height + 'px' });
+    Object.assign(g.style, at(r0), { background: cs.backgroundColor, borderRadius: cs.borderRadius, boxShadow: cs.boxShadow, border: cs.borderTopWidth + ' solid ' + cs.borderTopColor });
+    par.classList.add('glidegrp'); par.insertBefore(g, par.firstChild);
+    el.classList.add('gliding');
+    requestAnimationFrame(() => requestAnimationFrame(() => Object.assign(g.style, at(r1))));
+    let fin = false;
+    const done = () => { if (fin) return; fin = true; g.remove(); el.classList.remove('gliding'); if (!par.querySelector('.glider')) par.classList.remove('glidegrp'); };
+    g.addEventListener('transitionend', e => { if (e.propertyName === 'left') done(); });
+    setTimeout(done, 480);
+  });
+}
 // Little springy bounce on chips, tabs and toggles, re-found after a re-render so it always plays.
 const BOUNCE = '.pill, .seg button, .swatch, .nav a, .mcol2, .switch, .selchip-main, .cf-icons button, .step, .iconbtn, .scell';
 function bounceKey(t) {

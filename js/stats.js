@@ -155,7 +155,7 @@ function series(c, st) {
       id: n => 'fv' + n, next: (n, left) => left + ' more fruit or veg to ' + n },
     { key: 'weigh', kind: 'weight', sub: () => 'Weigh-ins', v: c.weighins, steps: [[1, 'First weigh-in done. Now we have a starting line.'], [5, 'Five weigh-ins.'], [12, '12 weigh-ins. Very scientific.'], [30, '30 weigh-ins.'], [75, '75 weigh-ins. The scales know you well.']],
       id: n => 'weigh' + n, next: (n, left) => left + ' more weigh-in' + (left > 1 ? 's' : '') },
-    { key: 'cook', kind: 'log', sub: () => 'Cooking', v: c.recipes, steps: [[1, 'First recipe saved. Chef Samer!'], [5, 'Five recipes saved. Cookbook loading…'], [15, '15 recipes. Open a restaurant.']],
+    { key: 'cook', kind: 'log', sub: () => 'Cooking', v: c.recipes, steps: [[1, 'First recipe saved. ' + ((S.state.profile && S.state.profile.sex === 'f') ? 'Chef Samira!' : 'Chef Samer!')], [5, 'Five recipes saved. Cookbook loading…'], [15, '15 recipes. Open a restaurant.']],
       id: n => 'cook' + n, next: (n, left) => left + ' more recipe' + (left > 1 ? 's' : '') + ' to save' }
   ];
 }
