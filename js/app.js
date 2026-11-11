@@ -610,12 +610,34 @@ function openCreate(code) {
   pad = null; renderOverlay();
 }
 const CF_ICONS = ['snack', 'sweet', 'bread', 'grain', 'meal', 'fruit', 'veg', 'meat', 'fish', 'egg', 'dairy', 'cheese', 'nut', 'drink', 'hot', 'pizza', 'oil', 'alcohol'];
+// Photo of a nutrition label -> numbers in the form (read on the phone, nothing uploaded).
+async function scanLabel(file) {
+  const s = sheet; if (!s || s.type !== 'create') return;
+  pad = null; s.ocr = { p: 0.02, msg: 'Getting the label reader ready…' }; renderOverlay(true);
+  let last = 0;
+  try {
+    const OCR = await import('./ocr.js');
+    const text = await OCR.readLabel(file, (p, msg) => { if (sheet !== s) return; s.ocr = { p, msg }; const now = Date.now(); if (now - last > 120) { last = now; const b = document.querySelector('.scanlabel'); if (b) b.innerHTML = '<span class="ocrbar"><i style="width:' + Math.round(p * 100) + '%"></i></span><span>' + esc(msg) + '</span>'; } });
+    const r = OCR.parseLabel(text);
+    if (sheet !== s) return;
+    s.ocr = null;
+    if (!r.found.length) { renderOverlay(true); toast('Couldn\'t read that label', 'Try again closer up, straight on, in good light, with just the nutrition table in the photo.'); return; }
+    if (r.basis) { s.basis = r.basis; if (r.basis === 'serving') { s.serving = r.serving || s.serving; if (r.size) s.v.size = r.size; s.sunit = r.sunit || 'g'; } s.basisOpen = true; }
+    Object.keys(r.v).forEach(k => { s.v[k] = r.v[k]; });
+    s.scanned = r.found;
+    renderOverlay(true);
+    toast(r.found.length >= 7 ? 'Label read!' : 'Got some of it', r.found.length + ' of 8 values filled in. Give them a quick check against the packet.', r.found.length >= 7 ? 'good' : '');
+  } catch (e) {
+    if (sheet === s) { s.ocr = null; renderOverlay(true); }
+    toast('Couldn\'t read the label', String(e && e.message || e));
+  }
+}
 function cfFood() { const s = sheet; return { name: s.name || 'x', cat: s.cat || undefined }; }
 function cfLiquid() { const s = sheet; return s.basis === '100ml' || (s.basis === 'serving' && s.sunit === 'ml'); }
 function createSheetHtml() {
   const s = sheet, padOn = !!pad, liq = cfLiquid(), U = liq ? 'ml' : 'g';
   const box = (k, big) => { const f = CF_FIELDS.find(x => x[0] === k), on = pad && pad.id === 'cf_' + k, sh = padShown('cf_' + k);
-    return `<button type="button" class="nl-num ${big ? 'big' : ''} ${on ? 'on' : ''}" data-a="cfpad" data-k="${k}" id="cf_${k}" aria-label="${f[1]}"><span class="v">${esc(sh != null ? sh : (s.v[k] ? g1(s.v[k]) : '0'))}</span>${on ? '<span class="caret" style="height:' + (big ? 26 : 18) + 'px"></span>' : ''}${big ? '' : `<span class="u">${k === 'size' ? U : f[2]}</span>`}</button>`; };
+    return `<button type="button" class="nl-num ${big ? 'big' : ''} ${on ? 'on' : ''} ${s.scanned && s.scanned.indexOf(k) >= 0 ? 'scanned' : ''}" data-a="cfpad" data-k="${k}" id="cf_${k}" aria-label="${f[1]}"><span class="v">${esc(sh != null ? sh : (s.v[k] ? g1(s.v[k]) : '0'))}</span>${on ? '<span class="caret" style="height:' + (big ? 26 : 18) + 'px"></span>' : ''}${big ? '' : `<span class="u">${k === 'size' ? U : f[2]}</span>`}</button>`; };
   const row = (k, label, strong, sub) => `<div class="nl-row ${sub ? 'sub' : ''}"><span class="nl-l" style="font-weight:${strong ? 800 : 600}">${label}</span>${box(k)}</div>`;
   const basisTxt = s.basis === 'serving' ? 'per ' + esc(s.serving || 'serving') + (s.v.size ? ' · ' + g1(s.v.size) + ' ' + U : '') : s.basis === '100ml' ? 'per 100 ml' : 'per 100 g';
   return `<div class="sheet ${s.anim ? 'anim' : ''} ${padOn ? 'withpad' : ''}" role="dialog" aria-label="Create a food" id="cfsheet" style="${padOn ? 'max-height:calc(100dvh - 330px)' : ''}">
@@ -627,6 +649,8 @@ function createSheetHtml() {
     ${s.editing ? `<div class="fixnote">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>', { s: 15, w: 2.4 })}<span>Correcting the numbers. Your version is used every time you log this food from now on.</span></div>` : ''}
     ${s.code ? `<div class="small muted" style="font-weight:600;margin-top:-4px">Barcode ${esc(s.code)} · next time it'll scan straight in</div>` : ''}
     <div class="cf-icons" role="group" aria-label="Pick an icon">${CF_ICONS.map(c => `<button type="button" class="press ${F.catOf(cfFood()) === c ? 'on' : ''}" data-a="cfcat" data-v="${c}" aria-label="${c} icon">${F.foodTile({ name: 'x', cat: c }, 34)}</button>`).join('')}</div>
+    <button type="button" class="scanlabel press" data-a="cfscan" ${s.ocr ? 'disabled' : ''}>${s.ocr ? `<span class="ocrbar"><i style="width:${Math.round(s.ocr.p * 100)}%"></i></span><span>${esc(s.ocr.msg)}</span>` : `${svg('<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 9h8M8 12h8M8 15h5"/>', { s: 20, w: 2.2 })}<span>${s.scanned ? 'Scan the label again' : 'Scan the nutrition label'}</span>`}</button>
+    ${s.scanned ? `<div class="small" style="text-align:center;font-weight:700;color:var(--accent-ink);margin-top:-4px">Read ${s.scanned.length} of 8 values from the photo · check the highlighted ones against the packet</div>` : ''}
     <div class="nlabel">
       <div class="row" style="gap:8px"><span class="nl-title grow">Nutrition</span><button type="button" class="pill unit on press nl-basis" data-a="cfbasisopen" aria-expanded="${!!s.basisOpen}">${basisTxt} ${svg('<path d="M7 10l5 5 5-5"/>', { s: 14, w: 2.6 })}</button></div>
       ${s.basisOpen ? `<div class="nl-panel"><div class="small" style="font-weight:700">The packet shows values…</div>
@@ -1809,6 +1833,7 @@ const A = {
   cfbrandon: () => { sheet.showBrand = true; renderOverlay(true); const el = document.querySelector('[data-in="cfbrand"]'); if (el) el.focus(); },
   cficons: () => { const r = document.querySelector('.cf-icons'); if (r) { r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); } },
   cfcat: d => { sheet.cat = d.v; renderOverlay(true); },
+  cfscan: () => { const f = document.getElementById('labelfile'); if (f) { f.value = ''; f.click(); } },
   cfsave: () => { pad = null; if (sheet.editing) saveEdited(); else saveCreated(); },
   editfood: () => openEditFood(),
   cfcancel: () => { const b = sheet.editing && sheet.editing.back; pad = null; if (b) { sheet = Object.assign({}, b, { anim: false }); renderOverlay(true); } else closeSheet(); },
@@ -1964,6 +1989,7 @@ setInterval(() => { const t = S.todayKey(); if (t !== lastToday) { if (ui.date =
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { const t = S.todayKey(); if (t !== lastToday) { if (ui.date === lastToday) ui.date = t; lastToday = t; if (!sheet) render(); } } });
 
 /* ================= START ================= */
+(() => { const l = document.createElement('input'); l.type = 'file'; l.id = 'labelfile'; l.accept = 'image/*'; l.setAttribute('capture', 'environment'); l.hidden = true; document.body.appendChild(l); l.addEventListener('change', () => { if (l.files && l.files[0]) scanLabel(l.files[0]); }); })();
 (() => { const f = document.createElement('input'); f.type = 'file'; f.id = 'restorefile'; f.accept = 'application/json,.json'; f.hidden = true; document.body.appendChild(f); })();
 applyTheme();
 if (!S.state.profile) startSetup();
