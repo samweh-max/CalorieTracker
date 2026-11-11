@@ -610,6 +610,64 @@ function openCreate(code) {
   pad = null; renderOverlay();
 }
 const CF_ICONS = ['snack', 'sweet', 'bread', 'grain', 'meal', 'fruit', 'veg', 'meat', 'fish', 'egg', 'dairy', 'cheese', 'nut', 'drink', 'hot', 'pizza', 'oil', 'alcohol'];
+/* ---------- in-app camera for nutrition labels ---------- */
+let lblStream = null, torchOn = false;
+async function openLabelCamera() {
+  closeLabelCamera();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { A.lblphoto(); return; }
+  const el = document.createElement('div'); el.id = 'lblcam';
+  el.innerHTML = `<div class="scanner lblcam" role="dialog" aria-label="Photograph the nutrition label">
+    <video playsinline muted></video>
+    <div class="lbl-frame" id="lblframe"><i></i><i></i><i></i><i></i></div>
+    <div class="scan-top"><span id="lblmsg">Starting the camera…</span><div class="lbl-tip">Fill the box with just the nutrition table · hold steady · avoid glare</div></div>
+    <div class="lbl-bar">
+      <button type="button" class="lbl-side" data-a="lblphoto" aria-label="Choose a photo instead">${svg('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/>', { s: 22, c: '#fff', w: 2 })}<span>Photos</span></button>
+      <button type="button" class="lbl-shutter" data-a="lblshoot" aria-label="Take the photo" disabled><span></span></button>
+      <button type="button" class="lbl-side" data-a="lbltorch" id="lbltorch" aria-label="Torch" style="visibility:hidden">${svg('<path d="M9 2h6l-1 7h3l-7 13 1-9H8z"/>', { s: 22, c: '#fff', w: 2 })}<span>Torch</span></button>
+    </div>
+    <button type="button" class="lbl-cancel" data-a="lblclose">Cancel</button></div>`;
+  document.body.appendChild(el); document.body.style.overflow = 'hidden';
+  const v = el.querySelector('video'), msg = t => { const m = document.getElementById('lblmsg'); if (m) m.textContent = t; };
+  try {
+    lblStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1440 } }, audio: false });
+    if (!document.getElementById('lblcam')) { lblStream.getTracks().forEach(t => t.stop()); lblStream = null; return; }
+    v.srcObject = lblStream; await v.play().catch(() => {});
+    const tr = lblStream.getVideoTracks()[0];
+    try { tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {}); } catch (e) {}
+    try { const cap = tr.getCapabilities ? tr.getCapabilities() : {}; if (cap.torch) document.getElementById('lbltorch').style.visibility = 'visible'; } catch (e) {}
+    msg('Line up the label'); el.querySelector('.lbl-shutter').disabled = false;
+  } catch (e) {
+    const denied = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+    msg(denied ? 'Camera permission was refused. Allow it in your browser settings, or pick a photo.' : 'The camera didn\'t start. You can pick a photo instead.');
+    el.querySelector('.scanner').classList.add('failed');
+  }
+}
+function closeLabelCamera() {
+  if (lblStream) { lblStream.getTracks().forEach(t => t.stop()); lblStream = null; }
+  torchOn = false;
+  const el = document.getElementById('lblcam'); if (el) el.remove();
+  if (!sheet) document.body.style.overflow = '';
+}
+function toggleTorch() {
+  const tr = lblStream && lblStream.getVideoTracks()[0]; if (!tr) return;
+  torchOn = !torchOn; tr.applyConstraints({ advanced: [{ torch: torchOn }] }).catch(() => {});
+  const b = document.getElementById('lbltorch'); if (b) b.classList.toggle('on', torchOn);
+}
+// Grab exactly what's inside the box, at the camera's full resolution.
+function shootLabel() {
+  const el = document.getElementById('lblcam'), v = el && el.querySelector('video'), fr = document.getElementById('lblframe');
+  if (!v || !v.videoWidth || !fr) return;
+  const vr = v.getBoundingClientRect(), r = fr.getBoundingClientRect();
+  const sc = Math.max(vr.width / v.videoWidth, vr.height / v.videoHeight); // object-fit: cover
+  const ox = vr.left + (vr.width - v.videoWidth * sc) / 2, oy = vr.top + (vr.height - v.videoHeight * sc) / 2;
+  const pad = 0.04, sx = Math.max(0, (r.left - ox) / sc - r.width / sc * pad), sy = Math.max(0, (r.top - oy) / sc - r.height / sc * pad);
+  const sw = Math.min(v.videoWidth - sx, r.width / sc * (1 + 2 * pad)), sh = Math.min(v.videoHeight - sy, r.height / sc * (1 + 2 * pad));
+  const c = document.createElement('canvas'); c.width = Math.round(sw); c.height = Math.round(sh);
+  c.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  if (navigator.vibrate) navigator.vibrate(30);
+  el.querySelector('.scanner').classList.add('flash');
+  setTimeout(() => { closeLabelCamera(); scanLabel(c); }, 160);
+}
 // Photo of a nutrition label -> numbers in the form (read on the phone, nothing uploaded).
 async function scanLabel(file) {
   const s = sheet; if (!s || s.type !== 'create') return;
@@ -618,7 +676,7 @@ async function scanLabel(file) {
   try {
     const OCR = await import('./ocr.js');
     const text = await OCR.readLabel(file, (p, msg) => { if (sheet !== s) return; s.ocr = { p, msg }; const now = Date.now(); if (now - last > 120) { last = now; const b = document.querySelector('.scanlabel'); if (b) b.innerHTML = '<span class="ocrbar"><i style="width:' + Math.round(p * 100) + '%"></i></span><span>' + esc(msg) + '</span>'; } });
-    const r = OCR.parseLabel(text);
+    const r = OCR.parseBest(text);
     if (sheet !== s) return;
     s.ocr = null;
     if (!r.found.length) { renderOverlay(true); toast('Couldn\'t read that label', 'Try again closer up, straight on, in good light, with just the nutrition table in the photo.'); return; }
@@ -1833,7 +1891,11 @@ const A = {
   cfbrandon: () => { sheet.showBrand = true; renderOverlay(true); const el = document.querySelector('[data-in="cfbrand"]'); if (el) el.focus(); },
   cficons: () => { const r = document.querySelector('.cf-icons'); if (r) { r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); } },
   cfcat: d => { sheet.cat = d.v; renderOverlay(true); },
-  cfscan: () => { const f = document.getElementById('labelfile'); if (f) { f.value = ''; f.click(); } },
+  cfscan: () => openLabelCamera(),
+  lblphoto: () => { closeLabelCamera(); const f = document.getElementById('labelfile'); if (f) { f.value = ''; f.click(); } },
+  lblshoot: () => shootLabel(),
+  lbltorch: () => toggleTorch(),
+  lblclose: () => closeLabelCamera(),
   cfsave: () => { pad = null; if (sheet.editing) saveEdited(); else saveCreated(); },
   editfood: () => openEditFood(),
   cfcancel: () => { const b = sheet.editing && sheet.editing.back; pad = null; if (b) { sheet = Object.assign({}, b, { anim: false }); renderOverlay(true); } else closeSheet(); },
@@ -1989,7 +2051,7 @@ setInterval(() => { const t = S.todayKey(); if (t !== lastToday) { if (ui.date =
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { const t = S.todayKey(); if (t !== lastToday) { if (ui.date === lastToday) ui.date = t; lastToday = t; if (!sheet) render(); } } });
 
 /* ================= START ================= */
-(() => { const l = document.createElement('input'); l.type = 'file'; l.id = 'labelfile'; l.accept = 'image/*'; l.setAttribute('capture', 'environment'); l.hidden = true; document.body.appendChild(l); l.addEventListener('change', () => { if (l.files && l.files[0]) scanLabel(l.files[0]); }); })();
+(() => { const l = document.createElement('input'); l.type = 'file'; l.id = 'labelfile'; l.accept = 'image/*'; l.hidden = true; document.body.appendChild(l); l.addEventListener('change', () => { if (l.files && l.files[0]) scanLabel(l.files[0]); }); })();
 (() => { const f = document.createElement('input'); f.type = 'file'; f.id = 'restorefile'; f.accept = 'application/json,.json'; f.hidden = true; document.body.appendChild(f); })();
 applyTheme();
 if (!S.state.profile) startSetup();
