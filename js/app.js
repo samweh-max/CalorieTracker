@@ -128,7 +128,7 @@ function padKey(k) {
 function padShown(id) { return pad && pad.id === id && !pad.fresh ? (pad.buf === '' ? '0' : pad.buf) : null; }
 
 /* ---------------- rendering ---------------- */
-const NAV_ORDER = ['today', 'dash', 'foods', 'weight', 'me'];
+const NAV_ORDER = ['today', 'dash', 'foods', 'me'];
 const REDUCED = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 // The old page slides away while the new one slides in. It's only a picture of the old page, so it never catches taps.
 function slideOut(dir) {
@@ -165,7 +165,7 @@ function go(v) {
 }
 
 function nav(on) {
-  const it = [['today', 'Today', I.home], ['dash', 'Dashboard', I.chart], ['foods', 'Foods', I.search], ['weight', 'Weight', I.scale], ['me', 'Me', I.user]];
+  const it = [['today', 'Today', I.home], ['dash', 'Dashboard', I.chart], ['foods', 'Foods', I.search], ['me', 'Me', I.user]];
   const to = NAV_ORDER.indexOf(on), from = ui.navFrom != null && ui.navFrom >= 0 ? ui.navFrom : to;
   ui.navFrom = to;
   return `<nav class="nav" aria-label="Main"><span class="navpill" aria-hidden="true" style="--from:${from};--to:${to}"></span>${it.map(([k, l, ic]) => `<a href="#${k}" data-a="go" data-v="${k}" class="${on === k ? 'on' : ''}" ${on === k ? 'aria-current="page"' : ''}>${ic()}${l}</a>`).join('')}</nav>`;
@@ -178,6 +178,17 @@ function weekKeys(k) {
   return Array.from({ length: 7 }, (_, i) => S.addDays(mon, i));
 }
 
+// Tap Breakfast / Lunch / Dinner…: the macros of everything in that meal.
+function mealMacros(m, es, plan, open) {
+  const t = S.totals(es), kc = t.p * 4 + t.c * 4 + t.f * 9;
+  const cell = (l, v, tg, col) => `<div class="edm"><div class="edm-h"><i class="key" style="background-color:${col}"></i>${l}</div><b>${g1(v)} g</b><span class="nxbar"><i style="width:${Math.min(100, Math.round(v / tg * 100))}%;background-color:${col}"></i></span><small>${Math.round(v / tg * 100)}% of day</small></div>`;
+  const split = kc ? `<div class="msplit">${[[t.p * 4, '#6366F1'], [t.c * 4, '#F97316'], [t.f * 9, '#EAB308']].map(([v, c]) => `<i style="flex:${v};background-color:${c}"></i>`).join('')}</div>
+    <div class="edline muted">${Math.round(t.p * 4 / kc * 100)}% protein · ${Math.round(t.c * 4 / kc * 100)}% carbs · ${Math.round(t.f * 9 / kc * 100)}% fat · ${Math.round(t.kcal / plan.kcal * 100)}% of today's calories</div>` : '';
+  return `<div class="edet mealdet ${open ? 'open' : ''}" data-meal="${esc(m)}"><div class="edin"><div class="edbox" style="margin-left:0">
+    ${split}
+    <div class="edgrid">${cell('Protein', t.p, plan.p, '#6366F1')}${cell('Carbs', t.c, plan.c, '#F97316')}${cell('Fat', t.f, plan.f, '#EAB308')}${cell('Fibre', t.fib, plan.fib, '#10B981')}</div>
+    <div class="edline">Sugar <b>${g1(t.sug)} g</b> · Sat fat <b>${g1(t.sat)} g</b> · Sodium <b>${fmt(naMg(t.salt))} mg</b></div></div></div></div>`;
+}
 function entryDetail(e, plan, open) {
   const n = e.n || {}, kc = (n.p || 0) * 4 + (n.c || 0) * 4 + (n.f || 0) * 9;
   const m = (l, v, tg, col) => `<div class="edm"><div class="edm-h"><i class="key" style="background-color:${col}"></i>${l}</div><b>${g1(v || 0)} g</b><span class="nxbar"><i style="width:${Math.min(100, Math.round((v || 0) / tg * 100))}%;background-color:${col}"></i></span><small>${Math.round((v || 0) / tg * 100)}% of day</small></div>`;
@@ -293,8 +304,10 @@ VIEWS.today = () => {
   const mealsHtml = S.meals().map(m => {
     const es = d.entries.filter(e => e.meal === m);
     const kc = es.reduce((s, e) => s + e.n.kcal, 0);
-    return `<div class="card rise"><div class="meal-h"><div class="grow"><div class="h2">${esc(m)}</div><div class="small muted">${es.length ? fmt(kc) + ' kcal' : 'Nothing yet'}</div></div>
+    const mo = es.length && (ui.openMeals || {})[m];
+    return `<div class="card rise"><div class="meal-h">${es.length ? `<button type="button" class="meal-tap" data-a="mealmac" data-meal="${esc(m)}" aria-expanded="${!!mo}"><div class="h2">${esc(m)} <span class="echev" style="${mo ? 'transform:rotate(180deg)' : ''}">${svg('<path d="M7 10l5 5 5-5"/>', { s: 15, w: 2.6 })}</span></div><div class="small muted">${fmt(kc)} kcal · tap for macros</div></button>` : `<div class="grow"><div class="h2">${esc(m)}</div><div class="small muted">Nothing yet</div></div>`}
       <button type="button" class="addbtn press" data-a="addto" data-meal="${esc(m)}" aria-label="Add food to ${esc(m)}">${I.plus({ s: 18, w: 2.8 })}</button></div>
+      ${es.length ? mealMacros(m, es, plan, mo) : ''}
       ${es.map(e => { const op = ui.openEntry === e.id; return `<div class="swipe esw"><div class="ebg"><button type="button" class="sw-edit2" data-a="swedit" data-id="${e.id}" tabindex="-1">${svg('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/>', { s: 18, c: '#fff' })}Edit</button><button type="button" class="swipe-del" data-a="swdel" data-id="${e.id}" tabindex="-1">${I.trash({ s: 18, c: '#fff' })}Delete</button></div><button type="button" class="entry ${op ? 'open' : ''}" data-a="entry" data-id="${e.id}" aria-expanded="${op}" aria-label="${esc(e.food.name)}, ${fmt(e.n.kcal)} kcal. Tap for details, swipe left to edit or delete">${F.foodTile(e.food, 32)}<div class="grow"><div class="nm ell">${esc(e.food.name)}</div><div class="am ell">${esc(amountText(e))}${e.food.brand ? ' · ' + esc(e.food.brand) : ''}</div></div><span class="kc">${fmt(e.n.kcal)}</span><span class="echev" aria-hidden="true">${svg('<path d="M7 10l5 5 5-5"/>', { s: 16, w: 2.6 })}</span></button></div>${entryDetail(e, plan, op)}`; }).join('')}
     </div>`;
   }).join('');
@@ -735,7 +748,7 @@ function saveCreated() {
   else units.push({ label: 'Grams', short: 'g', g: 1 }, { label: 'Ounces', short: 'oz', g: 28.35 });
   const food = { id: 'mine:' + S.uid(), name: s.name.trim(), brand: s.brand.trim(), src: 'mine', per, units, code: s.code || undefined, liquid: liq || undefined, cat: s.cat || undefined };
   S.state.foods[food.id] = Object.assign({ used: 0 }, food); S.save();
-  openFoodSheet(food, s.forRecipe && ui.recipe ? { anim: false, mode: 'ingadd' } : { anim: false });
+  openFoodSheet(food, s.forRecipe && ui.recipe ? { anim: false, mode: 'ingadd' } : s.forSel && ui.multi ? { anim: false, sel: true } : { anim: false });
 }
 
 /* ================= CONFIRM SHEET ================= */
@@ -1054,7 +1067,8 @@ function lookupTyped() {
 async function lookupBarcode(code) {
   const forRecipe = ui.scanFor === 'recipe' && !!ui.recipe && ui.view === 'recipe';
   ui.scanFor = null;
-  const o = forRecipe ? { mode: 'ingadd' } : {};
+  const forSel = !forRecipe && ui.multi && ui.view === 'foods'; // in Select several: scanning ticks the food
+  const o = forRecipe ? { mode: 'ingadd' } : forSel ? { sel: true } : {};
   const mine = Object.values(S.state.foods).find(f => f.code === code);
   if (mine) { openFoodSheet(mine, o); return; }
   toast('Looking up ' + code + '…');
@@ -1062,7 +1076,7 @@ async function lookupBarcode(code) {
     const food = await F.offBarcode(code, S.state.profile.country);
     $toast.innerHTML = '';
     if (food) { openFoodSheet(food, o); return; }
-    confirmSheet('We don\'t know this one yet', 'Barcode ' + code + ' isn\'t in Open Food Facts. Add it from the label and it\'ll scan straight in next time.', 'Add from the label', () => { openCreate(code); if (sheet) sheet.forRecipe = forRecipe; });
+    confirmSheet('We don\'t know this one yet', 'Barcode ' + code + ' isn\'t in Open Food Facts. Add it from the label and it\'ll scan straight in next time.', 'Add from the label', () => { openCreate(code); if (sheet) { sheet.forRecipe = forRecipe; sheet.forSel = forSel; } });
   } catch (e) {
     toast('Couldn\'t look that up', 'Check your connection and try again.');
   }
@@ -1177,7 +1191,7 @@ function macroCard(plan) {
     let y = WH, rects = '';
     if (tot) [[x.p * 4, '#6366F1'], [x.c * 4, '#F97316'], [x.f * 9, '#EAB308']].forEach(([v, c]) => { const hh = v / tot * h; y -= hh; rects += `<rect x="0" y="${y.toFixed(1)}" width="20" height="${(hh + 0.4).toFixed(1)}" fill="${c}"/>`; });
     else rects = `<rect x="0" y="${WH - 4}" width="20" height="4" fill="${dark ? '#2A3433' : '#E9ECEC'}"/>`;
-    return `<button type="button" class="mcol2 ${on ? 'on' : ''}" data-a="mday" data-k="${k}" aria-label="${S.longDate(k)} macros" aria-pressed="${on}"><svg viewBox="0 0 20 ${WH}" preserveAspectRatio="none" width="100%" height="${WH}"><defs><clipPath id="mc${i}"><rect x="0" y="${(WH - h).toFixed(1)}" width="20" height="${h.toFixed(1)}" rx="4"/></clipPath></defs><g clip-path="url(#mc${i})">${rects}</g></svg></button>`;
+    return `<button type="button" class="mcol2 ${on ? 'on' : ''}" data-a="mday" data-k="${k}" aria-label="${S.longDate(k)} macros" aria-pressed="${on}"><svg viewBox="0 0 20 ${WH}" preserveAspectRatio="none" width="100%" height="${WH}"><defs><clipPath id="mc${i}"><rect x="0" y="${(WH - h).toFixed(1)}" width="20" height="${h.toFixed(1)}" rx="4"/></clipPath></defs><g clip-path="url(#mc${i})">${rects}</g>${on ? `<rect x="1" y="${(WH - h + 1).toFixed(1)}" width="18" height="${Math.max(2, h - 2).toFixed(1)}" rx="4" fill="none" stroke="${dark ? '#E6ECED' : '#1F2A2E'}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>` : ''}</svg></button>`;
   }).join('');
   const labels = week.map(k => `<span style="flex:1;text-align:center;font-size:11px;font-weight:${k === day ? 800 : 600};color:${k === day ? 'var(--ink)' : 'var(--ink2)'}">${k === today ? 'Today' : 'MTWTFSS'[(S.parseKey(k).getDay() + 6) % 7]}</span>`).join('');
   const RL = { week: '7 days', month: '30 days', m3: '3 months', year: '12 months', all: 'all time' };
@@ -1286,11 +1300,22 @@ VIEWS.dash = () => {
         <div class="row" style="align-items:flex-start"><div class="grow"><div style="font-size:16px;font-weight:800">Weight</div><div class="small muted">${RANGE_SUB[ds.range]}</div></div>
           <div style="text-align:right"><div style="font-size:22px;font-weight:800;letter-spacing:-.5px">${wFmt(latest)}</div><div class="small" style="font-weight:800;color:${(delta <= 0) === (p.gkg <= p.startKg) ? 'var(--accent-ink)' : 'var(--over-ink)'}">${Math.abs(delta) < 0.05 ? 'no change' : (delta < 0 ? '▼ ' : '▲ ') + wDelta(Math.abs(delta))}</div></div></div>
         ${weightChart(keys)}
-        <button type="button" class="btn outline press" data-a="logweight" style="height:46px;font-size:14px">${I.plus({ s: 16, w: 2.6 })}Log today's weight</button></div>
+        <button type="button" class="btn outline press" data-a="logweight" style="height:46px;font-size:14px">${I.plus({ s: 16, w: 2.6 })}Log today's weight</button>
+        ${weighList()}</div>
       ${ratingsCard()}
       <div class="card rise row" style="gap:14px">${cupSvg(true)}<div class="grow"><div class="h2">Water</div><div class="small muted">${g1(cups.reduce((a, b) => a + b, 0) / 7)} cups a day this week · goal hit ${hit} of 7 days</div></div></div>
     </div>${nav('dash')}</div>`;
 };
+function weighList() {
+  const ws = T.weightsSorted().reverse(), p = S.state.profile, losing = p.gkg < p.startKg, open = !!ui.dash.wopen;
+  if (!ws.length) return '';
+  const shown = open ? ws : [];
+  return `<button type="button" class="wtoggle" data-a="wlist" aria-expanded="${open}">${open ? 'Hide' : 'Show'} weigh-ins (${ws.length}) <span class="echev" style="${open ? 'transform:rotate(180deg)' : ''}">${svg('<path d="M7 10l5 5 5-5"/>', { s: 15, w: 2.6 })}</span></button>
+    ${open ? `<div class="wlist">${shown.map((w, i) => { const prev = ws[i + 1], d = prev ? Math.round((w[1] - prev[1]) * 10) / 10 : null;
+      return `<div class="row" style="padding:8px 0;border-top:1px solid var(--line);gap:10px"><span class="small" style="width:92px;font-weight:700;color:var(--ink2)">${S.prettyDate(w[0])}</span><span class="grow" style="font-size:15px;font-weight:800">${wFmt(w[1])}</span>
+        ${d == null ? '' : `<span class="wchip" style="background:${d === 0 ? 'var(--soft)' : (d < 0) === losing ? 'var(--accent-soft)' : 'var(--over-soft)'};color:${d === 0 ? 'var(--ink2)' : (d < 0) === losing ? 'var(--accent-ink)' : 'var(--over-ink)'}">${d > 0 ? '+' : ''}${g1(d)}</span>`}
+        <button type="button" class="iconbtn ghost" data-a="delweight" data-k="${w[0]}" aria-label="Delete weigh-in ${S.longDate(w[0])}" style="width:32px;height:32px;color:var(--ink3)">${I.x({ s: 14 })}</button></div>`; }).join('')}</div>` : ''}`;
+}
 afterRender.dash = () => {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     document.querySelectorAll('[data-w]').forEach(el => { if (el.classList.contains('jfill')) el.style.width = el.dataset.w + '%'; else if (el.classList.contains('jrunner')) el.style.left = el.dataset.w + '%'; });
@@ -1707,6 +1732,14 @@ const A = {
     document.querySelectorAll('.esw .entry.open').forEach(x => { x.classList.remove('open'); x.setAttribute('aria-expanded', 'false'); });
     if (open) { const det = document.getElementById('ed-' + d.id); if (det) det.classList.add('open'); el.classList.add('open'); el.setAttribute('aria-expanded', 'true'); }
   },
+  mealmac: (d, el) => {
+    ui.openMeals = ui.openMeals || {};
+    const open = !ui.openMeals[d.meal]; ui.openMeals[d.meal] = open;
+    const card = el.closest('.card'), det = card && card.querySelector('.mealdet'), ch = el.querySelector('.echev');
+    if (det) det.classList.toggle('open', open);
+    if (ch) ch.style.transform = open ? 'rotate(180deg)' : '';
+    el.setAttribute('aria-expanded', open);
+  },
   swedit: d => {
     closeSwipes();
     const e = S.day(ui.date).entries.find(x => x.id === d.id);
@@ -1754,6 +1787,7 @@ const A = {
   dsel: d => { ui.dash.sel = ui.dash.sel === d.k ? null : d.k; render(); },
   mday: d => { ui.dash.mday = d.k && ui.dash.mday !== d.k ? d.k : null; render(); },
   logweight: () => openWeighIn(),
+  wlist: () => { ui.dash.wopen = !ui.dash.wopen; render(); },
   wbox: d => { weighPad(d.id); renderOverlay(true); },
   wunits: d => { S.state.profile.units = d.v; S.save(); render(); },
   delweight: d => confirmSheet('Delete this weigh-in?', S.longDate(d.k) + ' · ' + wFmt((S.state.weights.find(w => w[0] === d.k) || [0, 0])[1]), 'Delete', () => { S.state.weights = S.state.weights.filter(w => w[0] !== d.k); S.save(); render(); }, true),
@@ -2057,7 +2091,8 @@ applyTheme();
 if (!S.state.profile) startSetup();
 else T.newMilestones();
 const h = (location.hash || '').slice(1);
-if (S.state.profile && ['today', 'dash', 'foods', 'weight', 'me'].indexOf(h) >= 0) ui.view = h;
+if (S.state.profile && ['today', 'dash', 'foods', 'me'].indexOf(h) >= 0) ui.view = h;
+if (S.state.profile && h === 'weight') ui.view = 'dash';
 render();
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
