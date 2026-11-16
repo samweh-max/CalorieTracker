@@ -564,3 +564,12 @@ input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-sele
 .mealdet .edbox { margin: 4px 0 8px; }
 .msplit { display: flex; height: 8px; border-radius: 99px; overflow: hidden; gap: 2px; }
 .msplit i { display: block; min-width: 3px; }
+
+/* country picker */
+.flag { font-size: 16px; line-height: 1; }
+.cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cpick { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 12px 14px; border-radius: 16px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.cpick .flag { font-size: 26px; margin-bottom: 2px; }
+.cpick b { font-size: 15px; font-weight: 800; }
+.cpick small { font-size: 11.5px; font-weight: 600; color: var(--ink3); }
+.cpick.on { border-color: var(--accent); background: var(--accent-wash); }

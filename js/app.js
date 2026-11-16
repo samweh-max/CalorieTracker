@@ -405,11 +405,13 @@ function resultsHtml() {
   else if (ui.tab !== 'all' || !q) html += `<div class="card empty"><span class="h2">${ui.tab === 'mine' ? 'No foods of your own yet' : ui.tab === 'recipes' ? 'No recipes yet' : ui.tab === 'recent' ? 'Nothing logged yet' : 'Nothing here yet'}</span><span class="small muted">${ui.tab === 'mine' ? 'Tap “Create food” to add one from a label.' : ui.tab === 'recipes' ? 'Cooked something? Tap “Create recipe”, add the ingredients, and log it by the portion.' : 'Foods you log will show up here.'}</span></div>`;
   if (ui.tab === 'all' && q.length >= 2) {
     const o = ui.online;
-    const cn = country === 'CA' ? 'Canada' : 'the UK';
+    const cn = F.countryOf(country).where;
     if (o.status === 'loading') html += `<div class="sectionlbl">Searching products in ${cn}…</div><div class="list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>`;
     else if (o.status === 'done') {
       if (o.cnf.length) html += `<div class="sectionlbl">Canadian Nutrient File (Health Canada)</div><div class="list">${o.cnf.map(f => resRow(f, 'cnf')).join('')}</div>`;
-      if (o.items.length) html += `<div class="sectionlbl">Products in ${cn} · Open Food Facts</div><div class="list">${o.items.map(f => resRow(f, 'online')).join('')}</div>`;
+      if (o.items.length) { const loc = o.items.filter(f => f.src !== 'off'), ww = o.items.filter(f => f.src === 'off');
+        if (loc.length) html += `<div class="sectionlbl">Products in ${cn} · Open Food Facts</div><div class="list">${loc.map(f => resRow(f, 'online')).join('')}</div>`;
+        if (ww.length) html += `<div class="sectionlbl">${loc.length ? 'More products worldwide' : 'Products worldwide · fewer listed for ' + cn + ' so far'} · Open Food Facts</div><div class="list">${ww.map(f => resRow(f, 'online')).join('')}</div>`; }
       if (!o.items.length && !o.cnf.length && !local.length) html += `<div class="card empty"><span class="h2">Nothing found for “${esc(q)}”</span><span class="small muted">Try another word, or create it yourself from the label.</span></div>`;
     } else if (o.status === 'error') html += `<div class="card empty"><span class="h2">Couldn't reach the online food database</span><span class="small muted">Check your connection. Your own foods and the basics still work offline.</span><button type="button" class="pill" data-a="retry" style="margin-top:6px">Try again</button></div>`;
     else if (o.status === 'wait' && q.length >= 2) html += `<div class="sectionlbl">Searching products in ${cn}…</div>`;
@@ -426,7 +428,7 @@ VIEWS.foods = () => {
     <div class="searchhead">
       <div class="row" style="justify-content:space-between">${pick ? `<button type="button" class="iconbtn" data-a="backrecipe" aria-label="Back to recipe">${I.back({ s: 20, w: 2.4 })}</button>` : ''}<div class="grow htitle"><div class="small muted ell" style="font-weight:700">${esc(kicker)}</div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px;white-space:nowrap">${pick ? 'Add ingredient' : 'Find a food'}</div></div>
         <div class="hbtns"><button type="button" class="pill ${ui.multi ? 'on' : 'unit'} press" data-a="multi" aria-pressed="${!!ui.multi}" style="display:flex;align-items:center;gap:5px;margin-right:6px">${ui.multi ? I.x({ s: 14, w: 2.6 }) + 'Cancel' : svg('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><path d="M3 17l3 3 5-5M14 18h7"/>', { s: 15 }) + '<span class="lg">Select several</span><span class="sm">Select</span>'}</button>
-        <button type="button" class="pill unit on press" data-a="country" aria-label="Food country: ${p.country === 'CA' ? 'Canada' : 'UK'}. Tap to switch" style="display:flex;align-items:center;gap:6px">${I.globe({ s: 16 })}<span class="lg">${p.country === 'CA' ? 'Canada' : 'UK'}</span><span class="sm">${p.country === 'CA' ? 'CA' : 'UK'}</span></button></div></div>
+        <button type="button" class="pill unit on press" data-a="country" aria-label="Food country: ${F.countryOf(p.country).name}. Tap to change" style="display:flex;align-items:center;gap:6px"><span class="flag" aria-hidden="true">${F.countryOf(p.country).flag}</span><span class="lg">${p.country === 'SA' ? 'Saudi' : F.countryOf(p.country).name.replace('United Kingdom', 'UK')}</span><span class="sm">${F.countryOf(p.country).short}</span></button></div></div>
       <div class="row" style="gap:8px"><label class="searchbox">${I.search({ s: 18, c: 'var(--ink2)', w: 2.4 })}<input id="q" type="search" inputmode="search" autocomplete="off" enterkeyhint="search" placeholder="Search e.g. porridge, Heinz beans…" value="${esc(ui.q)}" data-in="q" aria-label="Search foods"></label>
         <button type="button" class="scan press" data-a="scan" aria-label="Scan a barcode">${I.scan({ c: '#fff' })}</button></div>
       <div class="tabs">${tabs.map(([k, l]) => `<button type="button" class="pill ${ui.tab === k ? 'on' : ''}" data-a="tab" data-v="${k}">${l}</button>`).join('')}</div>
@@ -768,6 +770,10 @@ function renderOverlay(fromPad) {
   else if (sheet.type === 'multi') inner = multiSheetHtml();
   else if (sheet.type === 'quiz') inner = quizSheetHtml();
   else if (sheet.type === 'export') inner = exportSheetHtml();
+  else if (sheet.type === 'country') inner = `<div class="sheet ${sheet.anim ? 'anim' : ''}" role="dialog" aria-label="Where do you buy food?"><div class="grab"></div>
+    <div class="row"><h3 class="grow">Where do you buy food?</h3><button type="button" class="iconbtn" data-a="close" aria-label="Close">${I.x({ s: 18 })}</button></div>
+    <div class="small muted">Search shows products from this country first. Built-in basics (including Lebanese & Gulf dishes) are always there.</div>
+    <div class="cgrid">${Object.keys(F.COUNTRIES).map(k => { const c = F.COUNTRIES[k], on = S.state.profile.country === k; return `<button type="button" class="cpick press ${on ? 'on' : ''}" data-a="setcountry" data-v="${k}" aria-pressed="${on}"><span class="flag">${c.flag}</span><b>${c.name}</b><small>${k === 'CA' ? '+ Canadian Nutrient File' : k === 'LB' || k === 'SA' ? '+ worldwide results' : 'UK supermarkets'}</small></button>`; }).join('')}</div></div>`;
   else if (sheet.type === 'confirm') inner = `<div class="sheet ${sheet.anim ? 'anim' : ''}" role="alertdialog"><div class="grab"></div><h3>${esc(sheet.title)}</h3><div class="small muted" style="font-size:14px">${esc(sheet.body)}</div><div class="row" style="gap:8px"><button type="button" class="btn quiet press" data-a="close">Cancel</button><button type="button" class="btn ${sheet.danger ? 'danger' : ''} press" data-a="confirmyes">${esc(sheet.yes)}</button></div></div>`;
   const keepScroll = document.querySelector('#overlay .sheet');
   const st = keepScroll ? keepScroll.scrollTop : 0;
@@ -852,7 +858,7 @@ VIEWS.setup = () => {
   let body = '';
   if (st === 0) body = `
     <label class="field"><span class="label">Your first name</span><input class="input" data-in="suname" value="${esc(su.name)}" placeholder="e.g. Sam" autocomplete="given-name"></label>
-    <div class="field"><span class="label">Where do you buy food?</span><div class="row" style="gap:8px">${opt('country', 'UK', 'United Kingdom', 'UK products first', 'style="flex:1"')}${opt('country', 'CA', 'Canada', 'Canadian products first', 'style="flex:1"')}</div></div>
+    <div class="field"><span class="label">Where do you buy food?</span><div class="row" style="gap:8px">${opt('country', 'UK', 'United Kingdom', 'UK products first', 'style="flex:1"')}${opt('country', 'CA', 'Canada', 'Canadian products first', 'style="flex:1"')}</div><div class="row" style="gap:8px">${opt('country', 'LB', 'Lebanon', 'Lebanese products first', 'style="flex:1"')}${opt('country', 'SA', 'Saudi Arabia', 'Saudi products first', 'style="flex:1"')}</div></div>
     <div class="field"><span class="label">Units</span><div class="row" style="gap:8px">${opt('units', 'metric', 'kg & cm', 'Metric', 'style="flex:1"')}${opt('units', 'uk', 'st, lb & ft', 'UK style', 'style="flex:1"')}${opt('units', 'us', 'lb & ft', 'Canada style', 'style="flex:1"')}</div>
       <span class="small muted">You can change all of this later in Me.</span></div>
     ${su.editing ? '' : `<div class="restorecard"><div class="grow"><div style="font-weight:800">Used Samslimmer before?</div><div class="small muted">Bring back your log, foods and recipes from a backup file and skip all this.</div></div>
@@ -1099,7 +1105,7 @@ VIEWS.me = () => {
         <div class="row"><span class="grow small" style="font-size:14px">Show on Today</span><button type="button" class="switch ${S.state.settings.buddy !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.buddy !== false}" aria-label="Show ${buddyName()}" data-a="buddyset" data-k="buddy"></button></div>
         ${S.state.profile && S.state.profile.sex !== 'f' ? `<div class="row"><span class="grow small" style="font-size:14px">Moustache</span><button type="button" class="switch ${S.state.settings.tache !== false ? 'on' : ''}" role="switch" aria-checked="${S.state.settings.tache !== false}" aria-label="Moustache" data-a="buddyset" data-k="tache"></button></div>` : ''}
         <div class="row"><span class="grow small" style="font-size:14px">Shirt</span><div class="row" style="gap:8px">${[['#C8553D', 'Brick red'], ['#2E8A82', 'Teal'], ['#3B5BA9', 'Blue'], ['#E0A43A', 'Mustard']].map(([c, l]) => `<button type="button" class="swatch press ${(S.state.settings.shirt || '#C8553D') === c ? 'on' : ''}" style="background:${c}" data-a="buddyset" data-k="shirt" data-v="${c}" aria-label="${l} shirt" aria-pressed="${(S.state.settings.shirt || '#C8553D') === c}"></button>`).join('')}</div></div></div>
-      <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Food search country</div><div class="row" style="gap:6px">${opt('country', 'UK', 'United Kingdom')}${opt('country', 'CA', 'Canada')}</div>
+      <div class="card rise" style="display:flex;flex-direction:column;gap:10px"><div class="h2">Food search country</div><div class="row" style="gap:6px;flex-wrap:wrap">${opt('country', 'UK', 'United Kingdom')}${opt('country', 'CA', 'Canada')}${opt('country', 'LB', 'Lebanon')}${opt('country', 'SA', 'Saudi Arabia')}</div>
         <div class="h2" style="margin-top:4px">Units</div><div class="row" style="gap:6px">${opt('units', 'metric', 'kg & cm')}${opt('units', 'uk', 'st & lb')}${opt('units', 'us', 'lb')}</div>
         <div class="h2" style="margin-top:4px">Favourite food units</div><div class="small muted">These show first when you add a food, and the first one that fits is picked for you. Volume units (ml, cup, tbsp…) appear on drinks, sauces, oils, yoghurt and the like.</div>
         <div class="row" style="gap:6px;flex-wrap:wrap">${F.ALL_UNITS.map(([k, l]) => { const on = favUnits().indexOf(k) >= 0; return `<button type="button" class="pill unit ${on ? 'on' : ''}" data-a="favunit" data-v="${k}" aria-pressed="${on}" title="${l}">${k === 'serving' ? 'Servings' : k}</button>`; }).join('')}</div></div>
@@ -1753,7 +1759,8 @@ const A = {
   },
   // foods
   tab: d => { ui.tab = d.v; onQuery(ui.q); document.querySelectorAll('.tabs .pill').forEach(b => b.classList.toggle('on', b.dataset.v === d.v)); },
-  country: () => { const p = S.state.profile; p.country = p.country === 'CA' ? 'UK' : 'CA'; S.save(); render(); onQuery(ui.q); toast('Food search: ' + (p.country === 'CA' ? 'Canada' : 'UK'), 'Products from ' + (p.country === 'CA' ? 'Canada' : 'the UK') + ' show first.'); },
+  country: () => { sheet = { type: 'country', anim: true }; pad = null; renderOverlay(); },
+  setcountry: d => { const p = S.state.profile; p.country = d.v; S.save(); closeSheet(); render(); onQuery(ui.q); const c = F.countryOf(d.v); toast('Food search: ' + c.name, 'Products from ' + c.where + ' show first.' + (d.v === 'LB' || d.v === 'SA' ? ' Worldwide results fill any gaps.' : '')); },
   retry: () => runOnline(ui.q.trim()),
   scan: () => { ui.scanFor = null; openScanner(); },
   ingscan: () => { ui.scanFor = 'recipe'; openScanner(); },
@@ -1934,7 +1941,7 @@ const A = {
   editfood: () => openEditFood(),
   cfcancel: () => { const b = sheet.editing && sheet.editing.back; pad = null; if (b) { sheet = Object.assign({}, b, { anim: false }); renderOverlay(true); } else closeSheet(); },
   // setup
-  suset: d => { const su = ui.su; const v = d.v; su[d.f] = (d.f === 'act' || d.f === 'pace') ? +v : v; if (d.f === 'country' && v === 'CA' && su.units === 'uk') su.units = 'us'; pad = null; render(); },
+  suset: d => { const su = ui.su; const v = d.v; su[d.f] = (d.f === 'act' || d.f === 'pace') ? +v : v; if (d.f === 'country' && v === 'CA' && su.units === 'uk') su.units = 'us'; if (d.f === 'country' && (v === 'LB' || v === 'SA')) su.units = 'metric'; pad = null; render(); },
   supad: d => {
     const B = suFields(ui.su), b = B[d.id], was = !!pad;
     const NEXT = { b_d: 'b_m', b_m: 'b_y' };

@@ -124,6 +124,42 @@ const BASIC_ROWS = [
   ['Lager / beer (4%)', 41, 0.3, 3, 0, 0, 0.2, 0, 0, 'bottle (330 ml):330|can (440 ml):440|pint (568 ml):568', 'L'],
   ['Red wine', 85, 0.1, 2.6, 0, 0, 0.6, 0, 0, 'small glass (125 ml):125|medium glass (175 ml):175|large glass (250 ml):250', 'L'],
   ['White wine', 82, 0.1, 2.6, 0, 0, 1, 0, 0, 'small glass (125 ml):125|medium glass (175 ml):175|large glass (250 ml):250', 'L'],
+  // Lebanese & Gulf favourites (typical averages per 100 g / 100 ml; home recipes vary, so treat as a guide)
+  ['Hummus', 166, 7.9, 14.3, 9.6, 6, 0.3, 1.4, 0.95, 'tbsp (30 g):30|portion (80 g):80'],
+  ['Baba ghanoush / mutabbal', 120, 2.5, 7, 9.5, 3, 3, 1.3, 0.8, 'tbsp (30 g):30|portion (80 g):80'],
+  ['Labneh', 160, 6, 4, 13.5, 0, 4, 8.5, 0.9, 'tbsp (30 g):30|portion (60 g):60'],
+  ['Tabbouleh', 120, 2, 13, 7, 3, 1.5, 1, 0.9, 'portion (150 g):150'],
+  ['Fattoush', 90, 2, 10, 5, 2.5, 3, 0.8, 0.8, 'portion (200 g):200'],
+  ['Falafel, fried', 333, 13.3, 31.8, 17.8, 4.9, 2, 2.4, 0.74, 'piece (17 g):17|3 pieces (51 g):51'],
+  ['Falafel wrap', 245, 8, 30, 10.5, 4, 3, 1.5, 1.1, 'wrap (250 g):250'],
+  ['Man’oushe, za’atar', 340, 7.5, 42, 16, 3, 2, 2.5, 1.1, 'one (130 g):130|half (65 g):65'],
+  ['Man’oushe, cheese (akkawi)', 300, 12, 33, 13.5, 1.5, 2, 7, 1.6, 'one (150 g):150|half (75 g):75'],
+  ['Arabic / pita bread', 275, 9.1, 55.7, 1.2, 2.2, 1.3, 0.2, 1.3, 'loaf (60 g):60|large loaf (90 g):90'],
+  ['Ka’ak, sesame bread', 300, 9, 52, 6, 3, 4, 1, 1.2, 'ring (100 g):100'],
+  ['Chicken shawarma wrap', 230, 13, 22, 10, 1.5, 2, 2, 1.3, 'wrap (300 g):300'],
+  ['Chicken shawarma (meat only)', 205, 23, 2, 12, 0, 1, 2.8, 1.2, 'portion (150 g):150'],
+  ['Beef shawarma (meat only)', 230, 20, 3, 15, 0, 1, 5.5, 1.2, 'portion (150 g):150'],
+  ['Shish tawook, grilled', 160, 24, 2, 6.5, 0, 1, 1.3, 1, 'skewer (120 g):120'],
+  ['Kofta kebab, grilled', 250, 18, 4, 18, 0.5, 1, 7, 1, 'skewer (90 g):90'],
+  ['Kibbeh, fried', 250, 12, 20, 13, 3, 1, 4, 0.9, 'piece (60 g):60'],
+  ['Sfiha (meat pie)', 280, 11, 28, 14, 1.5, 2, 4.5, 1.1, 'piece (50 g):50'],
+  ['Warak enab (stuffed vine leaves)', 150, 2.5, 16, 8.5, 3, 1.5, 1.2, 1, 'piece (25 g):25|5 pieces (125 g):125'],
+  ['Ful medames', 110, 7, 15, 3, 5.5, 1, 0.4, 0.6, 'portion (200 g):200'],
+  ['Mujaddara', 150, 6, 23, 4, 4, 1, 0.6, 0.5, 'portion (250 g):250'],
+  ['Fatteh (chickpea & yoghurt)', 170, 6, 15, 9.5, 3, 2, 3, 0.7, 'bowl (250 g):250'],
+  ['Kabsa, chicken & rice', 170, 10, 20, 5.5, 1, 1, 1.5, 0.8, 'plate (400 g):400'],
+  ['Mandi, chicken & rice', 180, 11, 21, 6, 0.8, 0.5, 1.8, 0.8, 'plate (400 g):400'],
+  ['Jareesh', 110, 4, 15, 4, 2, 1, 2, 0.6, 'bowl (250 g):250'],
+  ['Toum (garlic sauce)', 650, 1, 4, 70, 0.3, 0.5, 5, 1.2, 'tbsp (15 g):15'],
+  ['Tahini', 595, 17, 21, 54, 9.3, 0.5, 7.5, 0.1, 'tbsp (15 g):15'],
+  ['Dates, Medjool', 277, 1.8, 75, 0.2, 6.7, 66, 0, 0, 'date (24 g):24|3 dates (72 g):72'],
+  ['Dates, Khalas / Sukkari', 285, 2.2, 75, 0.4, 7, 64, 0, 0, 'date (10 g):10|5 dates (50 g):50'],
+  ['Maamoul (date)', 430, 5, 60, 19, 3, 30, 10, 0.2, 'piece (35 g):35'],
+  ['Baklava', 428, 6.7, 37.6, 29, 2.5, 20, 9.5, 0.5, 'piece (30 g):30'],
+  ['Knafeh', 330, 7, 38, 17, 0.5, 25, 9, 0.5, 'portion (150 g):150'],
+  ['Arabic coffee (qahwa)', 2, 0.1, 0.3, 0, 0, 0, 0, 0, 'finjan (30 ml):30|cup (60 ml):60', 'L'],
+  ['Karak tea', 70, 2, 10, 2.5, 0, 9.5, 1.6, 0.05, 'cup (150 ml):150', 'L'],
+  ['Laban / ayran', 40, 2.8, 4, 1.5, 0, 4, 1, 0.5, 'glass (250 ml):250', 'L'],
   // meals
   ['Pizza, margherita', 250, 11, 28, 9.5, 2, 3, 4.5, 1.2, 'slice (100 g):100|whole 12" (400 g):400'],
   ['Beef lasagne', 135, 7.5, 12, 6, 1.1, 2.3, 2.8, 0.6, 'portion (400 g):400'],
@@ -153,6 +189,8 @@ export const SRC = {
   generic: { label: 'Generic', bg: 'var(--src-gen-bg)', fg: 'var(--src-gen-fg)' },
   off_uk: { label: 'UK product', bg: 'var(--src-uk-bg)', fg: 'var(--src-uk-fg)' },
   off_ca: { label: 'Canadian product', bg: 'var(--src-ca-bg)', fg: 'var(--src-ca-fg)' },
+  off_lb: { label: 'Lebanese product', bg: 'var(--src-ca-bg)', fg: 'var(--src-ca-fg)' },
+  off_sa: { label: 'Saudi product', bg: 'var(--src-uk-bg)', fg: 'var(--src-uk-fg)' },
   off: { label: 'Product', bg: 'var(--src-gen-bg)', fg: 'var(--src-gen-fg)' },
   cnf: { label: 'Canadian Nutrient File', bg: 'var(--src-ca-bg)', fg: 'var(--src-ca-fg)' },
   mine: { label: 'My food', bg: 'var(--src-mine-bg)', fg: 'var(--src-mine-fg)' },
@@ -210,7 +248,15 @@ export function localSearch(q, tab) {
 }
 
 /* ---------- Open Food Facts ---------- */
-const OFF_COUNTRY = { UK: 'en:united-kingdom', CA: 'en:canada' };
+// Where you shop: which Open Food Facts country to search first.
+export const COUNTRIES = {
+  UK: { name: 'United Kingdom', short: 'UK', flag: '🇬🇧', where: 'the UK', tag: 'en:united-kingdom', src: 'off_uk' },
+  CA: { name: 'Canada', short: 'CA', flag: '🇨🇦', where: 'Canada', tag: 'en:canada', src: 'off_ca' },
+  LB: { name: 'Lebanon', short: 'LB', flag: '🇱🇧', where: 'Lebanon', tag: 'en:lebanon', src: 'off_lb' },
+  SA: { name: 'Saudi Arabia', short: 'KSA', flag: '🇸🇦', where: 'Saudi Arabia', tag: 'en:saudi-arabia', src: 'off_sa' }
+};
+export const countryOf = c => COUNTRIES[c] || COUNTRIES.UK;
+const OFF_COUNTRY = { UK: 'en:united-kingdom', CA: 'en:canada', LB: 'en:lebanon', SA: 'en:saudi-arabia' };
 const offCache = new Map();
 let lastOffCall = 0;
 
@@ -220,7 +266,8 @@ export function offToFood(p, country) {
   const n = p.nutriments || {};
   let kcal = n['energy-kcal_100g'];
   if (kcal == null && n['energy_100g'] != null) kcal = n['energy_100g'] / 4.184;
-  if (kcal == null || !p.product_name) return null;
+  const nm = (p.product_name_en || p.product_name || '').trim();
+  if (kcal == null || !nm) return null;
   const liquid = /ml|cl|\bl\b|litre|liter/i.test(p.quantity || '') && !/g\b/i.test(p.quantity || '');
   const units = [];
   const sq = num(p.serving_quantity);
@@ -229,16 +276,16 @@ export function offToFood(p, country) {
   if (pq > 0 && pq !== sq && pq < 3000) units.push({ label: 'Whole pack (' + Math.round(pq) + (liquid ? ' ml' : ' g') + ')', short: 'packs', g: pq });
   const salt = n['salt_100g'] != null ? num(n['salt_100g']) : num(n['sodium_100g']) * 2.5;
   const tags = p.countries_tags || [];
-  const src = tags.indexOf(OFF_COUNTRY[country]) >= 0 ? (country === 'CA' ? 'off_ca' : 'off_uk') : 'off';
+  const src = tags.indexOf(OFF_COUNTRY[country]) >= 0 ? countryOf(country).src : 'off';
   return {
-    id: 'off:' + p.code, code: p.code, name: p.product_name.trim(), brand: (p.brands || '').split(',')[0].trim(), src, liquid,
+    id: 'off:' + p.code, code: p.code, name: nm, brand: (p.brands || '').split(',')[0].trim(), src, liquid,
     per: { kcal: Math.round(num(kcal)), p: num(n['proteins_100g']), c: num(n['carbohydrates_100g']), f: num(n['fat_100g']),
            fib: num(n['fiber_100g']), sug: num(n['sugars_100g']), sat: num(n['saturated-fat_100g']), salt },
     units: stdUnits(units, liquid)
   };
 }
 
-const OFF_FIELDS = 'code,product_name,brands,nutriments,serving_size,serving_quantity,product_quantity,quantity,countries_tags';
+const OFF_FIELDS = 'code,product_name,product_name_en,brands,nutriments,serving_size,serving_quantity,product_quantity,quantity,countries_tags';
 
 export async function offSearch(q, country, signal) {
   const key = country + '|' + q.toLowerCase();
@@ -262,6 +309,15 @@ export async function offSearch(q, country, signal) {
     if (seen.has(k)) return false;
     seen.add(k); return true;
   });
+  // Lebanon & Saudi Arabia have fewer products on Open Food Facts, so top up with worldwide results.
+  if ((country === 'LB' || country === 'SA') && foods.length < 8 && !(signal && signal.aborted)) {
+    try {
+      const w2 = Math.max(0, 1500 - (Date.now() - lastOffCall)); if (w2) await new Promise(r => setTimeout(r, w2));
+      lastOffCall = Date.now();
+      const r2 = await fetch('https://world.openfoodfacts.org/cgi/search.pl?action=process&json=1&search_simple=1&page_size=20&search_terms=' + encodeURIComponent(q) + '&fields=' + OFF_FIELDS, { signal });
+      if (r2.ok) { const d2 = await r2.json(); (d2.products || []).map(p => offToFood(p, country)).forEach(f => { if (!f) return; const k = (f.name + '|' + f.brand + '|' + f.per.kcal).toLowerCase(); if (!seen.has(k)) { seen.add(k); foods.push(f); } }); }
+    } catch (e) { if (e.name === 'AbortError') throw e; }
+  }
   offCache.set(key, foods);
   return foods;
 }
@@ -348,23 +404,24 @@ export const CATS = {
 };
 const CAT_RULES = [
   ['alcohol', /\b(wine|beer|lager|cider|ale|stout|vodka|gin|rum|whisk(e)?y|prosecco|champagne|cocktail)\b/],
-  ['hot', /\b(coffee|latte|cappuccino|espresso|mocha|americano|tea|hot chocolate)\b/],
+  ['hot', /\b(coffee|latte|cappuccino|espresso|mocha|americano|tea|hot chocolate|qahwa|karak)\b/],
   ['snack', /(rice cake|crispbread)/],
   ['grain', /(weetabix|wheat biscuit|noodle|shredded wheat)/],
   ['veg', /(sweet potato|oven chips|fries|potato|wedges|green beans|runner beans|hash brown)/],
-  ['sweet', /(chocolate|biscuit|cookie|cake|ice cream|sweets?\b|candy|donut|doughnut|brownie|\bjam\b|honey|sugar|syrup|dessert|pudding|muffin|flapjack|digestive)/],
+  ['sweet', /(maamoul|baklava|knafeh|kunafa|biscuit|cookie|cake|ice cream|sweets?\b|candy|donut|doughnut|brownie|\bjam\b|honey|sugar|syrup|dessert|pudding|muffin|flapjack|digestive)/],
   ['cheese', /(cheese|cheddar|mozzarella|feta|brie|parmesan|halloumi|camembert)/],
   ['egg', /\beggs?\b|omelette/],
-  ['dairy', /\b(milk|yog(h)?urt|kefir|skyr|cream|oat drink|soya drink|almond drink)\b/],
+  ['dairy', /\b(milk|yog(h)?urt|kefir|skyr|cream|oat drink|soya drink|almond drink|labneh|laban|ayran)\b/],
   ['fish', /(salmon|tuna|\bcod\b|prawn|shrimp|fish|haddock|mackerel|sardine|crab|seafood)/],
-  ['meal', /(lasagne|lasagna|curry|tikka|masala|korma|poutine|\bpie\b|sandwich|soup|stew|chilli|bolognese|ready meal|dinner|risotto|burrito|stir fry|salad bowl|mac (and|&|n) cheese)/],
-  ['meat', /(chicken|beef|pork|lamb|bacon|\bham\b|sausage|steak|turkey|mince|burger|chorizo|salami|pepperoni|meat|kebab)/],
-  ['nut', /(almond|walnut|cashew|peanut|pistachio|hazelnut|\bnuts?\b|seeds?\b|hummus|lentil|chickpea|\bbeans?\b|beanz|tofu|edamame)/],
+  ['nut', /(falafel|ful medames|mujaddara|fatteh|tahini)/],
+  ['meal', /(kabsa|mandi|jareesh|shawarma wrap|falafel wrap|warak enab|vine leaves|tabbouleh|fattoush|kibbeh|sfiha|lasagne|lasagna|curry|tikka|masala|korma|poutine|\bpie\b|sandwich|soup|stew|chilli|bolognese|ready meal|dinner|risotto|burrito|stir fry|salad bowl|mac (and|&|n) cheese)/],
+  ['meat', /(chicken|beef|pork|lamb|bacon|\bham\b|sausage|steak|turkey|mince|burger|chorizo|salami|pepperoni|meat|kebab|shawarma|tawook|kofta)/],
+  ['nut', /(baba ghanoush|mutabbal|almond|walnut|cashew|peanut|pistachio|hazelnut|\bnuts?\b|seeds?\b|hummus|lentil|chickpea|\bbeans?\b|beanz|tofu|edamame)/],
   ['snack', /(crisps|\bchips\b|popcorn|pretzel|protein bar|cereal bar|\bbar\b|cracker|ready salted|salt (and|&) vinegar|tortilla chips|nachos)/],
   ['pizza', /pizza/],
-  ['bread', /(bread|toast|bagel|\bwrap\b|tortilla|crumpet|\broll\b|\bbun\b|pitta|naan|croissant|baguette)/],
+  ['bread', /(man’oushe|manoushe|manakish|ka’ak|ka'ak|bread|toast|bagel|\bwrap\b|tortilla|crumpet|\broll\b|\bbun\b|pitta|naan|croissant|baguette)/],
   ['grain', /(\brice\b|pasta|\boats?\b|porridge|cereal|flakes|granola|wheat|couscous|quinoa|muesli|spaghetti)/],
-  ['oil', /(\boil\b|mayo|mayonnaise|ketchup|sauce|dressing|butter|margarine|pesto|spread|vinegar|mustard)/],
+  ['oil', /(toum|garlic sauce|\boil\b|mayo|mayonnaise|ketchup|sauce|dressing|butter|margarine|pesto|spread|vinegar|mustard)/],
   ['drink', /(juice|cola|soda|lemonade|smoothie|\bwater\b|drink|squash|energy drink|\bpop\b|tonic)/],
   ['fruit', /(apple|banana|orange|satsuma|clementine|grape|berry|berries|\bpear|avocado|mango|pineapple|melon|kiwi|raisin|peach|plum|cherr|lemon|lime|fruit|\bdates?\b|\bfigs?\b|apricot|nectarine)/],
   ['veg', /(broccoli|carrot|spinach|tomato|cucumber|onion|\bpeas?\b|corn|mushroom|pepper|lettuce|salad|cauliflower|courgette|zucchini|\bveg|kale|cabbage|leek|garlic|celery|beetroot|asparagus|aubergine|eggplant|sprout)/]
